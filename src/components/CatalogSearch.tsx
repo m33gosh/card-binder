@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { pricing, pickPrice, type CatalogCard, type CatalogLang } from '@/lib/pricing'
 import { looksLikeCardRef, parseCardRef } from '@/lib/cardNumber'
 import { lookupRef } from '@/lib/identify'
+import { japaneseSpeciesName } from '@/lib/pokeNames'
 import { money } from './PriceTag'
 
 interface Props {
@@ -17,6 +18,8 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
   const [name, setName] = useState(initialName)
   const [number, setNumber] = useState(initialNumber)
   const [lang, setLang] = useState<CatalogLang>(initialLang)
+  /** when searching Japanese sets by an English name: what we translated it to */
+  const [translated, setTranslated] = useState<{ en: string; ja: string } | null>(null)
   const [results, setResults] = useState<CatalogCard[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,9 +52,22 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
       try {
         // "72/84" in either box means: number 72 in a set of 84
         const ref = looksLikeCardRef(number) ? parseCardRef(number) : looksLikeCardRef(name) ? parseCardRef(name) : null
-        if (ref && !name.trim()) setResults(await lookupRef(ref, lang))
-        else if (ref) setResults((await pricing.search({ name, lang })).filter((c) => c.number === ref.number))
-        else setResults(await pricing.search({ name, number, lang }))
+        // Japanese sets have Japanese names; translate an English name first
+        let query = name
+        setTranslated(null)
+        if (lang === 'ja' && /[A-Za-z]/.test(name)) {
+          const ja = await japaneseSpeciesName(name)
+          if (!ja) {
+            setResults([])
+            setError(`No Japanese name found for "${name.trim()}". Try the number printed on the card, like 205/190.`)
+            return
+          }
+          query = ja
+          setTranslated({ en: name.trim(), ja })
+        }
+        if (ref && !query.trim()) setResults(await lookupRef(ref, lang))
+        else if (ref) setResults((await pricing.search({ name: query, lang })).filter((c) => c.number === ref.number))
+        else setResults(await pricing.search({ name: query, number, lang }))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Search failed.')
       } finally {
@@ -80,7 +96,11 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
           Japanese card
         </label>
       </div>
+      <div className="row">
+        {lang === 'ja' && <p className="small muted" style={{ margin: 0 }}>Type the English Pokémon name, or the number as printed, like 205/190.</p>}
+      </div>
       {error && <div className="notice error">{error}</div>}
+      {translated && !busy && <p className="small muted">Searching Japanese sets for <strong>{translated.ja}</strong> ({translated.en}).</p>}
       {busy && <p className="small muted">Searching…</p>}
       {!busy && name.trim().length >= 2 && results.length === 0 && !error && (
         <p className="small muted">Nothing matched. Check the spelling, or try just the first word.</p>
@@ -92,6 +112,7 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
             <button key={c.id} type="button" className={`result${selectedId === c.id ? ' selected' : ''}`} onClick={() => void pick(c)} disabled={picking !== null}>
               <img src={c.images.small} alt="" loading="lazy" />
               <div className="name">{c.name}</div>
+              {translated && c.name.includes(translated.ja) && <div className="meta">{translated.en}{c.name.replace(translated.ja, '')}</div>}
               <div className="meta">{c.set.name} #{c.number}</div>
               {quote && <div className="meta">{money(quote.price)}</div>}
               {picking === c.id && <div className="meta">Loading…</div>}
