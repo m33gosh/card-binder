@@ -23,6 +23,8 @@ interface Draft {
   /** what the corner text suggested; needs a human to confirm */
   suggested: CatalogCard | null
   reading: 'waiting' | 'reading' | 'done' | 'failed'
+  /** what the reader made of the card: "77/132", or a name, for prefilling search */
+  readHint: string | null
 }
 
 type Step =
@@ -49,7 +51,7 @@ export function AddCardsPage() {
   }
 
   function draftFrom(blob: Blob): Draft {
-    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting' }
+    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting', readHint: null }
   }
 
   async function startBinderPage() {
@@ -100,7 +102,8 @@ export function AddCardsPage() {
         patchDraft(d.id, { reading: 'reading' })
         try {
           const result = await identifyCard(d.blob)
-          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null })
+          const hint = result.ref ? (result.ref.total ? `${result.ref.number}/${result.ref.total}` : result.ref.number) : result.name
+          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readHint: hint })
         } catch {
           patchDraft(d.id, { reading: 'failed' })
         }
@@ -282,7 +285,8 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
             <img src={current.url} alt="" style={{ width: 90, borderRadius: 8, aspectRatio: '63/88', objectFit: 'cover' }} />
             <div style={{ flex: 1, minWidth: 240 }}>
               <h3 style={{ marginBottom: 8 }}>Which card is this?</h3>
-              <CatalogSearch key={current.id} initialName={current.name} selectedId={current.match?.id} onSelect={(m) => onIdentified(current.id, m)} />
+              {current.readHint && !current.name && <p className="small muted">Read from the card: <strong>{current.readHint}</strong></p>}
+              <CatalogSearch key={current.id} initialName={current.name || current.readHint || ''} selectedId={current.match?.id} onSelect={(m) => onIdentified(current.id, m)} />
               <details style={{ marginTop: 10 }}>
                 <summary className="small muted">Can't find it? Save it with just a name</summary>
                 <label className="field" style={{ marginTop: 8 }}>

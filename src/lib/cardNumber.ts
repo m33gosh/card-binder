@@ -66,3 +66,24 @@ export function candidateSets(ref: CardRef, sets: SetInfo[]): SetInfo[] {
   if (ref.total) return sorted.filter((s) => String(s.printedTotal) === ref.total)
   return []
 }
+
+const KIND_WORDS = /\b(BASIC|STAGE\s*[12]?|ITEM|TRAINER|SUPPORTER|STADIUM|POK[ÉE]MON\s+TOOL|TOOL|SPECIAL|ENERGY\s+CARD|EVOLVES\s+FROM.*|HP\s*\d*.*)\b/gi
+
+/**
+ * The card's name from the text read off its top band. The name band reads
+ * like "STAGE 1 Houndoom Evolves from Houndour HP 130" so keep what's left
+ * after the kind words, and stop at HP or "Evolves from".
+ */
+export function parseCardName(text: string): string | null {
+  const head = text.split(/\bHP\b|\bEvolves\b/i)[0] ?? ''
+  const cleaned = head
+    .replace(KIND_WORDS, ' ')
+    .replace(/[^A-Za-z0-9'’.\-&é ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // OCR noise tends to be short fragments; a real name is a word of 3+ letters
+  const words = cleaned.split(' ').filter((w) => /[A-Za-zé]{3,}/.test(w) || /^(ex|V|GX|EX|VMAX|VSTAR)$/i.test(w))
+  if (words.length === 0) return null
+  const name = words.slice(0, 4).join(' ')
+  return name.length >= 3 ? name : null
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateSets, looksLikeCardRef, parseCardRef, type SetInfo } from './cardNumber'
+import { candidateSets, looksLikeCardRef, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
 
 const codes = ['PBL', 'CRI', 'WHT', 'OBF', 'SVE']
 
@@ -40,5 +40,16 @@ describe('candidateSets', () => {
   })
   it('returns nothing without a code or total', () => {
     expect(candidateSets({ number: '7' }, sets)).toEqual([])
+  })
+})
+
+describe('parseCardName', () => {
+  it('pulls the name out of the top band', () => {
+    expect(parseCardName('STAGE 1 Houndoom Evolves from Houndour HP 130')).toBe('Houndoom')
+    expect(parseCardName('BASIC Mega Lucario ex HP 340 ~ weakness')).toBe('Mega Lucario ex')
+    expect(parseCardName('Item TRAINER Antique Armor Fossil HP 60')).toBe('Antique Armor Fossil')
+  })
+  it('ignores noise-only text', () => {
+    expect(parseCardName('~ 7 || ..')).toBeNull()
   })
 })

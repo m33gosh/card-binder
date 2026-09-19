@@ -3,23 +3,32 @@
 import { supabase } from './supabase'
 import { pricing, type CatalogCard } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, parseCardRef, type CardRef } from './cardNumber'
+import { candidateSets, parseCardName, parseCardRef, type CardRef } from './cardNumber'
 import { getSets } from './catalogSets'
 
-/** The strip along the bottom of a card where the set code and number are printed. */
+/**
+ * One image with the two bands worth reading: the name band across the top
+ * and the bottom-left corner where the set code and number are printed.
+ * Stacked into a single picture so it costs one read.
+ */
 export async function cornerCrop(cardBlob: Blob): Promise<Blob> {
   const img = await loadImage(cardBlob)
   const w = img.naturalWidth
   const h = img.naturalHeight
-  const region = { x: 0, y: Math.round(h * 0.8), w: Math.round(w * 0.62), h: Math.round(h * 0.2) }
-  // upscale small crops a little; OCR reads 2x more reliably than it reads tiny text
-  const scale = region.w < 900 ? 2 : 1
+  const top = { x: 0, y: 0, w, h: Math.round(h * 0.16) }
+  const bottom = { x: 0, y: Math.round(h * 0.7), w: Math.round(w * 0.62), h: Math.round(h * 0.3) }
+  // OCR reads ~2x more reliably when the text is a good size; aim for ~1400px wide
+  const scale = Math.min(3, Math.max(1, 1400 / w))
   const canvas = document.createElement('canvas')
-  canvas.width = region.w * scale
-  canvas.height = region.h * scale
-  canvas.getContext('2d')!.drawImage(img, region.x, region.y, region.w, region.h, 0, 0, canvas.width, canvas.height)
+  canvas.width = Math.round(w * scale)
+  canvas.height = Math.round((top.h + bottom.h) * scale) + 12
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(img, top.x, top.y, top.w, top.h, 0, 0, Math.round(top.w * scale), Math.round(top.h * scale))
+  ctx.drawImage(img, bottom.x, bottom.y, bottom.w, bottom.h, 0, Math.round(top.h * scale) + 12, Math.round(bottom.w * scale), Math.round(bottom.h * scale))
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not crop the corner.'))), 'image/jpeg', 0.85),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not crop the card.'))), 'image/jpeg', 0.85),
   )
 }
 
@@ -44,6 +53,7 @@ export async function readCornerText(corner: Blob): Promise<string> {
 
 export interface Identification {
   ref: CardRef | null
+  name: string | null
   text: string
   candidates: CatalogCard[]
 }
@@ -64,6 +74,19 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   const codes = sets.map((s) => s.ptcgoCode).filter((c): c is string => Boolean(c))
   const text = await readCornerText(await cornerCrop(cardBlob))
   const ref = parseCardRef(text, codes)
-  if (!ref) return { ref: null, text, candidates: [] }
-  return { ref, text, candidates: await lookupRef(ref) }
+  const name = parseCardName(text)
+  // exact: set + number
+  let candidates = ref ? await lookupRef(ref) : []
+  // otherwise the name, narrowed by the printed total when we have one
+  if (candidates.length === 0 && name) {
+    const byName = await pricing.search({ name })
+    const total = ref?.total
+    const narrowed = total ? byName.filter((c) => String(setSize(c, sets)) === total) : byName
+    candidates = (narrowed.length ? narrowed : byName).slice(0, 5)
+  }
+  return { ref, name, text, candidates }
+}
+
+function setSize(card: CatalogCard, sets: Awaited<ReturnType<typeof getSets>>): number | undefined {
+  return card.set.printedTotal ?? sets.find((s) => s.id === card.set.id)?.printedTotal
 }
