@@ -6,14 +6,15 @@ import { money } from './PriceTag'
 
 interface Props {
   initialName?: string
+  initialNumber?: string
   selectedId?: string | null
   onSelect: (card: CatalogCard) => void
 }
 
 /** Find the official card record so we can price it. */
-export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props) {
+export function CatalogSearch({ initialName = '', initialNumber = '', selectedId, onSelect }: Props) {
   const [name, setName] = useState(initialName)
-  const [number, setNumber] = useState('')
+  const [number, setNumber] = useState(initialNumber)
   const [results, setResults] = useState<CatalogCard[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +35,9 @@ export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props)
 
   useEffect(() => {
     window.clearTimeout(timer.current)
-    if (name.trim().length < 2) {
+    // a number like 72/84 on its own is enough to search; a bare "72" is not
+    const numberAlone = !name.trim() && looksLikeCardRef(number)
+    if (name.trim().length < 2 && !numberAlone) {
       setResults([])
       return
     }
@@ -42,9 +45,11 @@ export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props)
       setBusy(true)
       setError(null)
       try {
-        // "72/84" typed in the name box means: number 72 in a set of 84
-        const ref = looksLikeCardRef(name) ? parseCardRef(name) : null
-        setResults(ref ? await lookupRef(ref) : await pricing.search({ name, number }))
+        // "72/84" in either box means: number 72 in a set of 84
+        const ref = looksLikeCardRef(number) ? parseCardRef(number) : looksLikeCardRef(name) ? parseCardRef(name) : null
+        if (ref && !name.trim()) setResults(await lookupRef(ref))
+        else if (ref) setResults((await pricing.search({ name })).filter((c) => c.number === ref.number))
+        else setResults(await pricing.search({ name, number }))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Search failed.')
       } finally {
@@ -63,10 +68,10 @@ export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props)
         </label>
         <label className="field" style={{ flex: '0 1 140px' }}>
           <span>Number</span>
-          <input className="input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="e.g. 57" inputMode="numeric" />
+          <input className="input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="57/191" inputMode="decimal" />
         </label>
       </div>
-      <p className="small muted">Fastest: type the number printed bottom-left on the card, like <strong>57/191</strong>, into the name box.</p>
+      <p className="small muted">Fastest: the number printed bottom-left on the card, like <strong>57/191</strong>, on its own finds the exact card.</p>
       {error && <div className="notice error">{error}</div>}
       {busy && <p className="small muted">Searching…</p>}
       {!busy && name.trim().length >= 2 && results.length === 0 && !error && (

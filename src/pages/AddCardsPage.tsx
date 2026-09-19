@@ -23,8 +23,10 @@ interface Draft {
   /** what the corner text suggested; needs a human to confirm */
   suggested: CatalogCard | null
   reading: 'waiting' | 'reading' | 'done' | 'failed'
-  /** what the reader made of the card: "77/132", or a name, for prefilling search */
-  readHint: string | null
+  /** the number read off the card, like "77/132", for the search's number box */
+  readNumber: string | null
+  /** the name read off the card, for the search's name box */
+  readName: string | null
   /** everything the reader saw, for when a suggestion is puzzling */
   readText: string | null
 }
@@ -53,7 +55,7 @@ export function AddCardsPage() {
   }
 
   function draftFrom(blob: Blob): Draft {
-    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting', readHint: null, readText: null }
+    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting', readNumber: null, readName: null, readText: null }
   }
 
   async function startBinderPage() {
@@ -104,8 +106,8 @@ export function AddCardsPage() {
         patchDraft(d.id, { reading: 'reading' })
         try {
           const result = await identifyCard(d.blob)
-          const hint = result.ref ? (result.ref.total ? `${result.ref.number}/${result.ref.total}` : result.ref.number) : result.name
-          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readHint: hint, readText: result.text || null })
+          const readNumber = result.ref ? (result.ref.total ? `${result.ref.number}/${result.ref.total}` : result.ref.number) : null
+          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readNumber, readName: result.name, readText: result.text || null })
         } catch {
           patchDraft(d.id, { reading: 'failed' })
         }
@@ -287,14 +289,22 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
             <img src={current.url} alt="" style={{ width: 90, borderRadius: 8, aspectRatio: '63/88', objectFit: 'cover' }} />
             <div style={{ flex: 1, minWidth: 240 }}>
               <h3 style={{ marginBottom: 8 }}>Which card is this?</h3>
-              {current.readHint && !current.name && <p className="small muted">Read from the card: <strong>{current.readHint}</strong></p>}
+              {(current.readNumber || current.readName) && !current.name && (
+                <p className="small muted">Read from the card: <strong>{[current.readName, current.readNumber].filter(Boolean).join(' · ')}</strong></p>
+              )}
               {current.readText && (
                 <details className="small muted" style={{ marginBottom: 8 }}>
                   <summary>Everything the reader saw</summary>
                   <p style={{ wordBreak: 'break-word' }}>{current.readText}</p>
                 </details>
               )}
-              <CatalogSearch key={current.id} initialName={current.name || current.readHint || ''} selectedId={current.match?.id} onSelect={(m) => onIdentified(current.id, m)} />
+              <CatalogSearch
+                key={current.id}
+                initialName={current.name || (current.readNumber ? '' : current.readName ?? '')}
+                initialNumber={current.readNumber ?? ''}
+                selectedId={current.match?.id}
+                onSelect={(m) => onIdentified(current.id, m)}
+              />
               <details style={{ marginTop: 10 }}>
                 <summary className="small muted">Can't find it? Save it with just a name</summary>
                 <label className="field" style={{ marginTop: 8 }}>
