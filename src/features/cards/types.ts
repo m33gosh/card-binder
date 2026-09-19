@@ -34,6 +34,8 @@ export interface CardRow {
   types: string[] | null
   hp: number | null
   attack_power: number | null
+  /** 'en' or 'ja': which catalog the card and its number belong to */
+  language: string
   created_at: string
   updated_at: string
 }

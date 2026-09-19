@@ -46,6 +46,7 @@ export function toCatalogCard(card: ApiCard): CatalogCard {
   }
   return {
     id: card.id,
+    language: 'en',
     name: card.name,
     number: card.number,
     rarity: card.rarity,

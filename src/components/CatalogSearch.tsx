@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { pricing, pickPrice, type CatalogCard } from '@/lib/pricing'
+import { pricing, pickPrice, type CatalogCard, type CatalogLang } from '@/lib/pricing'
 import { looksLikeCardRef, parseCardRef } from '@/lib/cardNumber'
 import { lookupRef } from '@/lib/identify'
 import { money } from './PriceTag'
@@ -7,14 +7,16 @@ import { money } from './PriceTag'
 interface Props {
   initialName?: string
   initialNumber?: string
+  initialLang?: CatalogLang
   selectedId?: string | null
   onSelect: (card: CatalogCard) => void
 }
 
 /** Find the official card record so we can price it. */
-export function CatalogSearch({ initialName = '', initialNumber = '', selectedId, onSelect }: Props) {
+export function CatalogSearch({ initialName = '', initialNumber = '', initialLang = 'en', selectedId, onSelect }: Props) {
   const [name, setName] = useState(initialName)
   const [number, setNumber] = useState(initialNumber)
+  const [lang, setLang] = useState<CatalogLang>(initialLang)
   const [results, setResults] = useState<CatalogCard[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export function CatalogSearch({ initialName = '', initialNumber = '', selectedId
   async function pick(card: CatalogCard) {
     setPicking(card.id)
     try {
-      onSelect((await pricing.getCard(card.id)) ?? card)
+      onSelect((await pricing.getCard(card.id, card.language)) ?? card)
     } catch {
       onSelect(card)
     } finally {
@@ -47,9 +49,9 @@ export function CatalogSearch({ initialName = '', initialNumber = '', selectedId
       try {
         // "72/84" in either box means: number 72 in a set of 84
         const ref = looksLikeCardRef(number) ? parseCardRef(number) : looksLikeCardRef(name) ? parseCardRef(name) : null
-        if (ref && !name.trim()) setResults(await lookupRef(ref))
-        else if (ref) setResults((await pricing.search({ name })).filter((c) => c.number === ref.number))
-        else setResults(await pricing.search({ name, number }))
+        if (ref && !name.trim()) setResults(await lookupRef(ref, lang))
+        else if (ref) setResults((await pricing.search({ name, lang })).filter((c) => c.number === ref.number))
+        else setResults(await pricing.search({ name, number, lang }))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Search failed.')
       } finally {
@@ -57,7 +59,7 @@ export function CatalogSearch({ initialName = '', initialNumber = '', selectedId
       }
     }, 350)
     return () => window.clearTimeout(timer.current)
-  }, [name, number])
+  }, [name, number, lang])
 
   return (
     <div>
@@ -71,7 +73,13 @@ export function CatalogSearch({ initialName = '', initialNumber = '', selectedId
           <input className="input" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="57/191" inputMode="decimal" />
         </label>
       </div>
-      <p className="small muted">Fastest: the number printed bottom-left on the card, like <strong>57/191</strong>, on its own finds the exact card.</p>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <p className="small muted" style={{ margin: 0 }}>Fastest: the number printed bottom-left on the card, like <strong>57/191</strong>, on its own finds the exact card.</p>
+        <label className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={lang === 'ja'} onChange={(e) => setLang(e.target.checked ? 'ja' : 'en')} />
+          Japanese card
+        </label>
+      </div>
       {error && <div className="notice error">{error}</div>}
       {busy && <p className="small muted">Searching…</p>}
       {!busy && name.trim().length >= 2 && results.length === 0 && !error && (

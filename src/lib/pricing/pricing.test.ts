@@ -4,6 +4,7 @@ import { buildQuery } from './pokemontcg'
 
 const card: CatalogCard = {
   id: 'sv3-1',
+  language: 'en',
   name: 'Test',
   number: '1',
   set: { id: 'sv3', name: 'Obsidian Flames' },

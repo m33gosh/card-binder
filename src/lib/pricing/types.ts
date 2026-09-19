@@ -46,8 +46,12 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   unlimited: 'Unlimited',
 }
 
+export type CatalogLang = 'en' | 'ja'
+
 export interface CatalogCard {
   id: string
+  /** which catalog the id belongs to; Japanese cards have their own sets and numbers */
+  language: CatalogLang
   name: string
   number: string
   rarity?: string
@@ -64,6 +68,8 @@ export interface CatalogCard {
   /** market price per variant, in USD, when the source knows it */
   prices: Partial<Record<Variant, number>>
   priceUpdatedAt?: string
+  /** where the price came from, when it differs from the source's usual */
+  priceSource?: string
   sourceUrl?: string
 }
 
@@ -77,11 +83,11 @@ export interface PriceQuote {
 
 export interface PricingSource {
   readonly name: string
-  search(query: { name: string; setId?: string; number?: string; page?: number }): Promise<CatalogCard[]>
-  getCard(id: string): Promise<CatalogCard | null>
-  listSets(): Promise<CatalogSet[]>
+  search(query: { name: string; setId?: string; number?: string; page?: number; lang?: CatalogLang }): Promise<CatalogCard[]>
+  getCard(id: string, lang?: CatalogLang): Promise<CatalogCard | null>
+  listSets(lang?: CatalogLang): Promise<CatalogSet[]>
   /** cards with this collector number in any of the given sets */
-  findByNumber(number: string, setIds: string[]): Promise<CatalogCard[]>
+  findByNumber(number: string, setIds: string[], lang?: CatalogLang): Promise<CatalogCard[]>
 }
 
 export interface CatalogSet {
@@ -109,14 +115,15 @@ export function totalAttackPower(card: Pick<CatalogCard, 'attackDamage'>): numbe
  * cheapest first, so we never overstate a card's value.
  */
 export function pickPrice(card: CatalogCard, preferred: Variant, source: string): PriceQuote | null {
+  const from = card.priceSource ?? source
   const preferredPrice = card.prices[preferred]
   if (preferredPrice != null && preferredPrice > 0) {
-    return { price: preferredPrice, currency: 'USD', variant: preferred, source, updatedAt: card.priceUpdatedAt }
+    return { price: preferredPrice, currency: 'USD', variant: preferred, source: from, updatedAt: card.priceUpdatedAt }
   }
   const alternatives = (Object.entries(card.prices) as Array<[Variant, number | undefined]>)
     .filter((entry): entry is [Variant, number] => entry[1] != null && entry[1] > 0)
     .sort((a, b) => a[1] - b[1])
   const first = alternatives[0]
   if (!first) return null
-  return { price: first[1], currency: 'USD', variant: first[0], source, updatedAt: card.priceUpdatedAt }
+  return { price: first[1], currency: 'USD', variant: first[0], source: from, updatedAt: card.priceUpdatedAt }
 }

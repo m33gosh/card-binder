@@ -1,9 +1,9 @@
 // Identify a card from its photo: read the bottom-left corner, then look the
 // number up in the catalog. Returns candidates, best first, or none.
 import { supabase } from './supabase'
-import { pricing, type CatalogCard } from './pricing'
+import { pricing, type CatalogCard, type CatalogLang } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
+import { candidateSets, japaneseCodeIn, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
 import { getSets } from './catalogSets'
 
 /**
@@ -32,10 +32,10 @@ function toDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-/** Ask the server to read the text on a corner crop. */
-export async function readCornerText(corner: Blob): Promise<string> {
+/** Ask the server to read the text on a card image. */
+export async function readCornerText(corner: Blob, language: 'eng' | 'jpn' = 'eng'): Promise<string> {
   const { data, error } = await supabase.functions.invoke<{ text?: string; error?: string }>('ocr-card', {
-    body: { image: await toDataUrl(corner) },
+    body: { image: await toDataUrl(corner), language },
   })
   if (error) throw new Error(error.message || 'Text reading failed.')
   if (data?.error) throw new Error(data.error)
@@ -47,22 +47,49 @@ export interface Identification {
   name: string | null
   text: string
   candidates: CatalogCard[]
+  language: CatalogLang
 }
 
 /** Resolve a card reference (from OCR or typed) to catalog cards. */
-export async function lookupRef(ref: CardRef): Promise<CatalogCard[]> {
-  const sets = await getSets()
+export async function lookupRef(ref: CardRef, lang: CatalogLang = 'en'): Promise<CatalogCard[]> {
+  const sets = await getSets(lang)
   const candidates = candidateSets(ref, sets)
   if (candidates.length === 0) return []
   // one query for up to 6 sets; more than that is a guess anyway
-  const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id))
+  const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id), lang)
   const order = new Map(candidates.map((s, i) => [s.id, i]))
   return cards.sort((a, b) => (order.get(a.set.id) ?? 99) - (order.get(b.set.id) ?? 99))
 }
 
 export async function identifyCard(cardBlob: Blob): Promise<Identification> {
-  const text = await readCornerText(await cornerCrop(cardBlob))
-  return identifyFromText(text)
+  const image = await cornerCrop(cardBlob)
+  const text = await readCornerText(image)
+  const result = await identifyFromText(text)
+  if (result.candidates.length > 0) return result
+  // nothing in the English catalog: does the corner carry a Japanese set code?
+  const [ja, en] = await Promise.all([getSets('ja'), getSets('en')])
+  const jaCode = japaneseCodeIn(text, ja.map((s) => s.id), en.map((s) => s.ptcgoCode ?? ''))
+  if (!jaCode) return result
+  // a second read in Japanese gets the name and attacks for confirmation
+  const jaText = await readCornerText(image, 'jpn').catch(() => '')
+  return identifyJapanese(text, jaText)
+}
+
+/** Japanese cards: set code + number is exact; the Japanese read confirms the name. */
+export async function identifyJapanese(latinText: string, jaText: string): Promise<Identification> {
+  const sets = await getSets('ja')
+  const ref = parseCardRef(latinText, sets.map((s) => s.id))
+  let candidates = ref ? await lookupRef(ref, 'ja') : []
+  if (candidates.length > 1 && jaText) {
+    const confirmed = candidates.filter((c) => jaText.includes(c.name))
+    if (confirmed.length) candidates = confirmed
+  }
+  if (candidates.length === 0 && jaText) {
+    // fall back to the Japanese name: the first run of kana/kanji of 2+ characters
+    const name = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー]{2,}/u.exec(jaText)?.[0]
+    if (name) candidates = (await pricing.search({ name, lang: 'ja' })).filter((c) => c.name.includes(name) || name.includes(c.name)).slice(0, 5)
+  }
+  return { ref, name: candidates[0]?.name ?? null, text: jaText ? `${latinText}\n${jaText}` : latinText, candidates, language: 'ja' }
 }
 
 /** Everything after the read: pure text handling plus catalog lookups. */
@@ -95,7 +122,7 @@ export async function identifyFromText(text: string): Promise<Identification> {
       break
     }
   }
-  return { ref, name, text, candidates }
+  return { ref, name, text, candidates, language: 'en' }
 }
 
 const readHp = (text: string) => /\bHP\s*(\d{2,3})\b/i.exec(text)?.[1]

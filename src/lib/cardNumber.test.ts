@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateSets, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
+import { candidateSets, japaneseCodeIn, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
 
 const codes = ['PBL', 'CRI', 'WHT', 'OBF', 'SVE']
 
@@ -67,5 +67,17 @@ describe('parseCardName', () => {
   })
   it('ignores noise-only text', () => {
     expect(parseCardName('~ 7 || ..')).toBeNull()
+  })
+})
+
+describe('japanese cards', () => {
+  it('spots a Japanese set code and repairs the SY misread', () => {
+    expect(japaneseCodeIn('Illus. Hideki Ishikawa G sy4a 205/190', ['SV4a', 'S12a', 'SM12a'], ['PBL', 'SVI'])).toBe('SV4A')
+    expect(japaneseCodeIn('PBL EN 072/084', ['SV4a'], ['PBL'])).toBeNull()
+  })
+  it('matches codes regardless of case', () => {
+    const sets: SetInfo[] = [{ id: 'SV4a', name: 'レイジングサーフ', ptcgoCode: 'SV4a', printedTotal: 190, releaseDate: '00150' }]
+    expect(parseCardRef('sy4a 205/190', ['SV4a'])).toEqual({ number: '205', total: '190', code: 'SV4A' })
+    expect(candidateSets({ number: '205', total: '190', code: 'SV4A' }, sets).map((s) => s.id)).toEqual(['SV4a'])
   })
 })

@@ -97,6 +97,7 @@ export function CardDetailPage() {
                 <dt>How many</dt><dd>{card.quantity}</dd>
                 <dt>Finish</dt><dd>{variantLabel(card.variant)}</dd>
                 <dt>Condition</dt><dd>{CONDITION_LABELS[card.condition]}</dd>
+                {card.language === 'ja' && <><dt>Language</dt><dd>Japanese</dd></>}
                 {card.notes && <><dt>Notes</dt><dd>{card.notes}</dd></>}
                 <dt>Added</dt><dd>{new Date(card.created_at).toLocaleDateString()}</dd>
               </dl>
@@ -123,7 +124,7 @@ export function CardDetailPage() {
           {relinking && (
             <div className="panel" style={{ marginTop: 18 }}>
               <h3 style={{ marginBottom: 10 }}>Which card is it?</h3>
-              <CatalogSearch initialName={card.name} selectedId={card.api_card_id} onSelect={(m) => void relink(m)} />
+              <CatalogSearch initialName={card.name} initialLang={card.language === 'ja' ? 'ja' : 'en'} selectedId={card.api_card_id} onSelect={(m) => void relink(m)} />
             </div>
           )}
         </div>

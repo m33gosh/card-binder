@@ -17,9 +17,14 @@ const PROMO_CODES: Record<string, string> = { SVP: 'SVP', SWSH: 'SWSH', SM: 'SMP
 const strip = (n: string) => n.replace(/^0+(?=\d)/, '')
 
 export function parseCardRef(text: string, knownCodes: string[] = []): CardRef | null {
-  const t = text.toUpperCase().replace(/[O]\s*\//g, '0/').replace(/\/\s*[O]/g, '/0')
+  const t = text
+    .toUpperCase()
+    .replace(/[O]\s*\//g, '0/')
+    .replace(/\/\s*[O]/g, '/0')
+    // Japanese set codes like SV4a are often read as SY4A
+    .replace(/\bSY(\d)/g, 'SV$1')
   // two-letter codes (HP, AR, …) collide with ordinary words; only trust 3+
-  const usable = knownCodes.filter((c) => c.length >= 3)
+  const usable = knownCodes.filter((c) => c.length >= 3).map((c) => c.toUpperCase())
   const codeRe = usable.length ? new RegExp(`\\b(${usable.map((c) => c.replace(/[-]/g, '\\-')).join('|')})\\b`) : null
   const code = codeRe?.exec(t)?.[1]
 
@@ -59,7 +64,8 @@ export interface SetInfo {
 export function candidateSets(ref: CardRef, sets: SetInfo[]): SetInfo[] {
   const sorted = [...sets].sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''))
   if (ref.code) {
-    const byCode = sorted.filter((s) => s.ptcgoCode === ref.code)
+    const wanted = ref.code.toUpperCase()
+    const byCode = sorted.filter((s) => s.ptcgoCode?.toUpperCase() === wanted)
     if (byCode.length) {
       const byTotal = ref.total ? byCode.filter((s) => String(s.printedTotal) === ref.total) : []
       if (byTotal.length) return byTotal
@@ -106,4 +112,14 @@ export function nameCandidates(text: string): string[] {
 /** Best single guess at the name, for showing to a person. */
 export function parseCardName(text: string): string | null {
   return nameCandidates(text)[0] ?? null
+}
+
+/** Does the text carry a Japanese set code (SV4a, S12a, SM12a, M1S…) that isn't an English one? */
+export function japaneseCodeIn(text: string, japaneseCodes: string[], englishCodes: string[]): string | null {
+  const t = text.toUpperCase().replace(/\bSY(\d)/g, 'SV$1')
+  const en = new Set(englishCodes.map((c) => c.toUpperCase()))
+  const ja = japaneseCodes.filter((c) => c.length >= 2 && !en.has(c.toUpperCase())).map((c) => c.toUpperCase())
+  if (!ja.length) return null
+  const re = new RegExp(`\\b(${ja.map((c) => c.replace(/[-+.]/g, '\\$&')).join('|')})\\b`)
+  return re.exec(t)?.[1] ?? null
 }

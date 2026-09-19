@@ -165,7 +165,7 @@ export function AddCardsPage() {
           set_name: null, set_id: null, card_number: null, rarity: null,
           api_card_id: null, api_image_url: null,
           market_price: null, price_currency: 'USD', price_source: null, price_updated_at: null,
-          supertype: null, types: null, hp: null, attack_power: null,
+          supertype: null, types: null, hp: null, attack_power: null, language: 'en',
           ...catalog,
           image_path,
           variant: d.variant,
@@ -328,7 +328,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
             {!d.match && d.suggested ? (
               <>
                 <div className="name">Is it {d.suggested.name}?</div>
-                <div className="meta small muted">{d.suggested.set.name} #{d.suggested.number}</div>
+                <div className="meta small muted">{d.suggested.language === 'ja' && 'Japanese · '}{d.suggested.set.name} #{d.suggested.number}</div>
                 <button className="btn primary" onClick={() => onConfirm(d.id)}>Yes, that's it</button>
                 <button className="btn" onClick={() => onIdentify(d.id)}>No, find it</button>
               </>

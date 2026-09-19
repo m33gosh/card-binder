@@ -32,8 +32,9 @@ Deno.serve(async (req) => {
   if (roleError || !['editor', 'admin'].includes(role)) return json({ error: 'Not allowed.' }, 403)
 
   let image: unknown
+  let language: unknown
   try {
-    ;({ image } = await req.json())
+    ;({ image, language } = await req.json())
   } catch {
     return json({ error: 'Send JSON with an image field.' }, 400)
   }
@@ -42,7 +43,8 @@ Deno.serve(async (req) => {
 
   const form = new FormData()
   form.append('base64Image', image)
-  form.append('language', 'eng')
+  // 'jpn' reads Japanese cards (names, attacks); 'eng' is the default
+  form.append('language', language === 'jpn' ? 'jpn' : 'eng')
   form.append('OCREngine', '2') // engine 2 read 68% of card numbers in testing; engine 1 managed 22%
   form.append('scale', 'true')
   form.append('isOverlayRequired', 'false')

@@ -102,6 +102,7 @@ export function fieldsFromCatalog(match: CatalogCard, variant: CardRow['variant'
     rarity: match.rarity ?? null,
     api_card_id: match.id,
     api_image_url: match.images.large,
+    language: match.language,
     ...statsFromCatalog(match),
     market_price: quote?.price ?? null,
     price_currency: quote?.currency ?? 'USD',
@@ -133,7 +134,7 @@ export async function refreshPrices(
   for (let i = 0; i < linked.length; i++) {
     const card = linked[i]
     try {
-      const match = await pricing.getCard(card.api_card_id!)
+      const match = await pricing.getCard(card.api_card_id!, card.language === 'ja' ? 'ja' : 'en')
       const quote = match ? pickPrice(match, card.variant, pricing.name) : null
       if (quote) {
         const row = await updateCard(card.id, {
