@@ -11,6 +11,7 @@ const dry = process.argv.includes('--dry-run')
 const s = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 const REST = 'https://api.tcgdex.net/v2/en'
 const get = async (p) => { const r = await fetch(REST + p); return r.status === 404 ? null : r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${p}`)) }
+const normVariant = (k) => ({ 'reverse-holofoil': 'reverseHolofoil', '1st-edition-holofoil': '1stEditionHolofoil', '1st-edition': '1stEditionNormal' })[k] ?? k
 const strip = (n) => String(n).replace(/^0+(?=\d)/, '').toUpperCase()
 // "Basic Fire Energy" and "Fire Energy" are the same card
 const norm = (n) => n.toLowerCase().replace(/^basic\s+/, '').replace(/[^a-z0-9]/g, '')
@@ -40,7 +41,7 @@ for (const row of rows) {
   }
   if (!card) { failed++; console.log(`  ? ${row.name} (${row.set_name} #${row.card_number}) not found in TCGdex`); continue }
   const tcg = card.pricing?.tcgplayer ?? {}
-  const prices = Object.fromEntries(Object.entries(tcg).filter(([, v]) => v && typeof v === 'object' && v.marketPrice > 0).map(([k, v]) => [k, v.marketPrice]))
+  const prices = Object.fromEntries(Object.entries(tcg).filter(([, v]) => v && typeof v === 'object' && v.marketPrice > 0).map(([k, v]) => [normVariant(k), v.marketPrice]))
   const pick = prices[row.variant] ? [row.variant, prices[row.variant]] : Object.entries(prices).sort((a, b) => a[1] - b[1])[0]
   const patch = {
     api_card_id: card.id,
@@ -53,7 +54,7 @@ for (const row of rows) {
     types: card.types ?? null,
     hp: typeof card.hp === 'number' ? card.hp : null,
     attack_power: card.attacks ? card.attacks.reduce((sum, a) => sum + damage(a.damage), 0) : null,
-    ...(pick ? { market_price: pick[1], variant: pick[0], price_currency: 'USD', price_source: 'TCGplayer via TCGdex', price_updated_at: new Date().toISOString() } : {}),
+    ...(pick ? { market_price: pick[1], variant: normVariant(pick[0]), price_currency: 'USD', price_source: 'TCGplayer via TCGdex', price_updated_at: new Date().toISOString() } : {}),
   }
   if (!dry) {
     const { error: uErr } = await s.from('cards').update(patch).eq('id', row.id)

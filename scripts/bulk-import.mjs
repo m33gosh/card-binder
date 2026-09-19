@@ -51,6 +51,7 @@ for (const item of manifest) {
 }
 const rows = [...merged.values()]
 
+const normVariant = (k) => ({ 'reverse-holofoil': 'reverseHolofoil', '1st-edition-holofoil': '1stEditionHolofoil', '1st-edition': '1stEditionNormal' })[k] ?? k
 function pickPrice(prices = {}, variant = 'normal') {
   if (prices[variant] > 0) return { price: prices[variant], variant }
   const alt = Object.entries(prices).filter(([, v]) => v > 0).sort((a, b) => a[1] - b[1])[0]

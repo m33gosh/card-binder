@@ -10,7 +10,7 @@ import type { CardRow } from '@/features/cards/types'
 import { BinderCropper } from '@/features/import/BinderCropper'
 import { pickPhotos } from '@/lib/camera'
 import { DEFAULT_GRID, cropRegion, gridCells, loadImage, normalizeForUpload, toDecodableBlob, type GridSpec } from '@/lib/images'
-import { pickPrice, pricing, VARIANT_LABELS, type CatalogCard, type Variant } from '@/lib/pricing'
+import { pickPrice, pricing, STANDARD_VARIANTS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
 import { identifyCard } from '@/lib/identify'
 
 interface Draft {
@@ -337,8 +337,8 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
                 <div className="name">{d.match?.name ?? (d.name || (d.reading === 'waiting' || d.reading === 'reading' ? 'Reading…' : 'Not named yet'))}</div>
             {d.match && (
               <select className="select" value={d.variant} onChange={(e) => onPatch(d.id, { variant: e.target.value as Variant })} style={{ minHeight: 36, padding: '4px 8px', fontSize: '0.85rem' }}>
-                {(Object.keys(d.match.prices).length ? (Object.keys(d.match.prices) as Variant[]) : (['normal'] as Variant[])).map((v) => (
-                  <option key={v} value={v}>{VARIANT_LABELS[v]} {d.match!.prices[v] != null && `· ${money(d.match!.prices[v]!)}`}</option>
+                {[...new Set([...STANDARD_VARIANTS, ...(Object.keys(d.match.prices) as Variant[])])].map((v) => (
+                  <option key={v} value={v}>{variantLabel(v)}{d.match!.prices[v] != null ? ` · ${money(d.match!.prices[v]!)}` : ''}</option>
                 ))}
               </select>
             )}

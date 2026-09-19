@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDamage, pickPrice, totalAttackPower, type CatalogCard } from './types'
+import { normalizeVariant, parseDamage, pickPrice, totalAttackPower, variantLabel, type CatalogCard } from './types'
 import { buildQuery } from './pokemontcg'
 
 const card: CatalogCard = {
@@ -49,5 +49,17 @@ describe('attack power', () => {
   it('adds up the attacks', () => {
     expect(totalAttackPower({ attackDamage: [130, 270] })).toBe(400)
     expect(totalAttackPower({})).toBe(0)
+  })
+})
+
+describe('variants', () => {
+  it('maps catalog spellings onto ours', () => {
+    expect(normalizeVariant('reverse-holofoil')).toBe('reverseHolofoil')
+    expect(normalizeVariant('1st-edition-holofoil')).toBe('1stEditionHolofoil')
+    expect(normalizeVariant('normal')).toBe('normal')
+  })
+  it('labels anything', () => {
+    expect(variantLabel('reverseHolofoil')).toBe('Reverse holo')
+    expect(variantLabel('reverse-holofoil')).toBe('Reverse holofoil')
   })
 })

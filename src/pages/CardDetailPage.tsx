@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthProvider'
 import { canEditCard } from '@/auth/permissions'
 import { deleteCard, fieldsFromCatalog, getCard, getPriceHistory, signImageUrls, updateCard } from '@/features/cards/api'
 import { CONDITION_LABELS, type CardRow, type Condition, type PricePoint } from '@/features/cards/types'
-import { VARIANT_LABELS, type CatalogCard, type Variant } from '@/lib/pricing'
+import { VARIANT_LABELS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
 import { CatalogSearch } from '@/components/CatalogSearch'
 import { PriceTag, money } from '@/components/PriceTag'
 import { Spinner } from '@/components/Spinner'
@@ -85,7 +85,7 @@ export function CardDetailPage() {
           <PriceTag price={card.market_price} currency={card.price_currency} big />
           {card.price_updated_at && (
             <p className="small muted" style={{ marginTop: 6 }}>
-              Market price for {VARIANT_LABELS[card.variant].toLowerCase()} on {new Date(card.price_updated_at).toLocaleDateString()} ({card.price_source})
+              Market price for {variantLabel(card.variant).toLowerCase()} on {new Date(card.price_updated_at).toLocaleDateString()} ({card.price_source})
               {card.quantity > 1 && ` · ${money(card.market_price! * card.quantity)} for all ${card.quantity}`}
             </p>
           )}
@@ -95,7 +95,7 @@ export function CardDetailPage() {
             <>
               <dl className="facts">
                 <dt>How many</dt><dd>{card.quantity}</dd>
-                <dt>Finish</dt><dd>{VARIANT_LABELS[card.variant]}</dd>
+                <dt>Finish</dt><dd>{variantLabel(card.variant)}</dd>
                 <dt>Condition</dt><dd>{CONDITION_LABELS[card.condition]}</dd>
                 {card.notes && <><dt>Notes</dt><dd>{card.notes}</dd></>}
                 <dt>Added</dt><dd>{new Date(card.created_at).toLocaleDateString()}</dd>
@@ -152,6 +152,7 @@ function EditForm({ card, saving, onCancel, onSave }: { card: CardRow; saving: b
         <label className="field"><span>Finish</span>
           <select className="select" value={variant} onChange={(e) => setVariant(e.target.value as Variant)}>
             {Object.entries(VARIANT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {!(variant in VARIANT_LABELS) && <option value={variant}>{variantLabel(variant)}</option>}
           </select>
         </label>
         <label className="field"><span>Condition</span>

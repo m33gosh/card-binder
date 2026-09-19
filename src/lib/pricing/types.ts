@@ -9,6 +9,34 @@ export type Variant =
   | '1stEditionNormal'
   | 'unlimited'
 
+/** The finishes a person can pick for any card, whether or not the catalog prices them. */
+export const STANDARD_VARIANTS: Variant[] = ['normal', 'holofoil', 'reverseHolofoil']
+
+/** Catalogs spell variants differently ("reverse-holofoil"); map them onto ours. */
+export function normalizeVariant(key: string): Variant {
+  const k = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const table: Record<string, Variant> = {
+    normal: 'normal',
+    holofoil: 'holofoil',
+    holo: 'holofoil',
+    reverseholofoil: 'reverseHolofoil',
+    reverseholo: 'reverseHolofoil',
+    reverse: 'reverseHolofoil',
+    '1steditionholofoil': '1stEditionHolofoil',
+    firsteditionholofoil: '1stEditionHolofoil',
+    '1steditionnormal': '1stEditionNormal',
+    '1stedition': '1stEditionNormal',
+    firstedition: '1stEditionNormal',
+    unlimited: 'unlimited',
+  }
+  return table[k] ?? (key as Variant)
+}
+
+/** Label for any variant, including ones we didn't anticipate. */
+export function variantLabel(v: string): string {
+  return VARIANT_LABELS[v as Variant] ?? v.replace(/[-_]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^\w/, (c) => c.toUpperCase())
+}
+
 export const VARIANT_LABELS: Record<Variant, string> = {
   normal: 'Regular',
   holofoil: 'Holo',

@@ -1,4 +1,4 @@
-import { parseDamage, type CatalogCard, type CatalogSet, type PricingSource, type Variant } from './types'
+import { normalizeVariant, parseDamage, type CatalogCard, type CatalogSet, type PricingSource, type Variant } from './types'
 import setCodes from './tcgdexSetCodes.json'
 
 // codes TCGdex doesn't list but cards print
@@ -68,7 +68,7 @@ export function toCatalogCard(card: RestCard): CatalogCard {
   const tcg = card.pricing?.tcgplayer ?? {}
   for (const [key, value] of Object.entries(tcg)) {
     const market = (value as { marketPrice?: number | null } | undefined)?.marketPrice
-    if (typeof market === 'number' && market > 0) prices[key as Variant] = market
+    if (typeof market === 'number' && market > 0) prices[normalizeVariant(key)] = market
   }
   return {
     id: card.id,
