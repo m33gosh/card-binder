@@ -152,3 +152,16 @@ pages/           Collection, CardDetail, AddCards, People, Login, Pending
   same API if you'd rather.
 - The free API occasionally returns a server error; the app retries once and
   otherwise asks you to try again.
+
+## Bulk import from a folder of photos
+
+`scripts/bulk-import.mjs` loads many cards at once from a JSON manifest plus a
+folder of per-card photos, merging duplicates into one row with a quantity.
+It needs the Supabase **service-role** key, which bypasses row security, so
+it runs only on your own machine: put `SUPABASE_SERVICE_ROLE_KEY=...` in
+`.env.local` (gitignored) and never in the app or the repo.
+
+```bash
+node scripts/bulk-import.mjs manifest.json photos/ --dry-run   # preview
+node scripts/bulk-import.mjs manifest.json photos/             # import
+```
