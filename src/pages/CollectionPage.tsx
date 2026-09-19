@@ -8,9 +8,11 @@ import { CardTile } from '@/components/CardTile'
 import { RefreshIcon } from '@/components/Icons'
 import { Spinner } from '@/components/Spinner'
 import { money } from '@/components/PriceTag'
+import { usePersistedState } from '@/lib/usePersistedState'
 
 const PAGE_SIZE = 9
 type Sort = 'newest' | 'value' | 'name'
+const SORTS: readonly Sort[] = ['newest', 'value', 'name']
 
 export function CollectionPage() {
   const { role } = useAuth()
@@ -18,7 +20,7 @@ export function CollectionPage() {
   const [photos, setPhotos] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<Sort>('newest')
+  const [sort, setSort] = usePersistedState<Sort>('card-binder:sort', 'newest', SORTS)
   const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(null)
   const [refreshNote, setRefreshNote] = useState<string | null>(null)
   const arrived = (useLocation().state ?? null) as { added: number; merged: number } | null
