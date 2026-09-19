@@ -93,6 +93,8 @@ with its own icon, and "Add cards" opens the camera directly.
 - **One card at a time**: pick one or more photos with a single card each.
 - Cards you can't find in the catalog can be saved with just a name and matched
   later from the card's page.
+- Adding a card you already have raises its count on the existing row instead
+  of storing a second row and a second photo. The bulk importer does the same.
 
 "Update today's prices" on the binder page re-fetches every matched card's
 market price and records it, so each card's page shows how its price has moved.

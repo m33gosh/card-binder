@@ -16,6 +16,13 @@ export async function getCard(id: string): Promise<CardRow | null> {
   return (data as CardRow | null) ?? null
 }
 
+/** The caller's own row for this catalog card, if they already have one. */
+export async function findOwnCardByCatalogId(apiCardId: string): Promise<CardRow | null> {
+  const { data, error } = await supabase.from('cards').select('*').eq('api_card_id', apiCardId).order('created_at').limit(1).maybeSingle()
+  if (error) throw error
+  return (data as CardRow | null) ?? null
+}
+
 export async function getPriceHistory(cardId: string): Promise<PricePoint[]> {
   const { data, error } = await supabase
     .from('price_history')

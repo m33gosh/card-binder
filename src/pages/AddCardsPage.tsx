@@ -5,7 +5,8 @@ import { CatalogSearch } from '@/components/CatalogSearch'
 import { CameraIcon, PageIcon } from '@/components/Icons'
 import { Spinner } from '@/components/Spinner'
 import { money } from '@/components/PriceTag'
-import { createCard, fieldsFromCatalog, uploadCardImage } from '@/features/cards/api'
+import { createCard, fieldsFromCatalog, findOwnCardByCatalogId, updateCard, uploadCardImage } from '@/features/cards/api'
+import type { CardRow } from '@/features/cards/types'
 import { BinderCropper } from '@/features/import/BinderCropper'
 import { pickPhotos } from '@/lib/camera'
 import { DEFAULT_GRID, cropRegion, gridCells, loadImage, normalizeForUpload, toDecodableBlob, type GridSpec } from '@/lib/images'
@@ -135,11 +136,24 @@ export function AddCardsPage() {
     const ready = step.drafts.filter((d) => d.match || d.name.trim())
     setStep({ kind: 'saving', done: 0, total: ready.length })
     let done = 0
+    let merged = 0
+    // catalog id -> the row it now lives in, so a second copy bumps the
+    // quantity instead of adding another row and another photo
+    const rows = new Map<string, CardRow>()
     try {
       for (const d of ready) {
+        if (d.match) {
+          const existing = rows.get(d.match.id) ?? (await findOwnCardByCatalogId(d.match.id))
+          if (existing) {
+            rows.set(d.match.id, await updateCard(existing.id, { quantity: existing.quantity + 1 }))
+            merged++
+            setStep({ kind: 'saving', done: ++done, total: ready.length })
+            continue
+          }
+        }
         const image_path = await uploadCardImage(user.id, d.blob)
         const catalog = d.match ? fieldsFromCatalog(d.match, d.variant) : {}
-        await createCard(user.id, {
+        const created = await createCard(user.id, {
           name: d.name.trim() || d.match!.name,
           set_name: null, set_id: null, card_number: null, rarity: null,
           api_card_id: null, api_image_url: null,
@@ -151,9 +165,10 @@ export function AddCardsPage() {
           quantity: 1,
           notes: null,
         })
+        if (d.match) rows.set(d.match.id, created)
         setStep({ kind: 'saving', done: ++done, total: ready.length })
       }
-      navigate('/')
+      navigate('/', { state: { added: ready.length - merged, merged } })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Saving stopped part-way. The cards saved so far are in the binder.')
       setStep({ kind: 'choose' })

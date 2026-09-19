@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { can } from '@/auth/permissions'
 import { collectionValue, listCards, refreshPrices, signImageUrls } from '@/features/cards/api'
@@ -21,6 +21,7 @@ export function CollectionPage() {
   const [sort, setSort] = useState<Sort>('newest')
   const [refreshing, setRefreshing] = useState<{ done: number; total: number } | null>(null)
   const [refreshNote, setRefreshNote] = useState<string | null>(null)
+  const arrived = (useLocation().state ?? null) as { added: number; merged: number } | null
 
   async function load() {
     try {
@@ -91,6 +92,12 @@ export function CollectionPage() {
       </div>
       {refreshing && <div className="progress" style={{ marginBottom: 16 }}><span style={{ width: `${(100 * refreshing.done) / Math.max(1, refreshing.total)}%` }} /></div>}
       {refreshNote && <div className="notice ok" style={{ marginBottom: 16 }}>{refreshNote}</div>}
+      {arrived && (arrived.added > 0 || arrived.merged > 0) && (
+        <div className="notice ok" style={{ marginBottom: 16 }}>
+          {arrived.added > 0 && `Added ${arrived.added} ${arrived.added === 1 ? 'card' : 'cards'}.`}
+          {arrived.merged > 0 && ` ${arrived.merged} ${arrived.merged === 1 ? 'was' : 'were'} already in your binder, so the count went up instead.`}
+        </div>
+      )}
 
       {cards.length === 0 ? (
         <div className="empty">
