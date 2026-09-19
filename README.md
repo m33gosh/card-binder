@@ -22,7 +22,8 @@ access yet), **editor** (has a binder), **admin** (also approves people on the
 People page). The first account to sign in becomes admin. Every rule lives in
 `supabase/migrations/` as a row-security policy (`0001` sets up the schema,
 `0002` makes binders private, `0003` retires the viewer role, `0004` limits the
-people list to admins); the app only
+people list to admins, `0005` adds card stats, `0006` adds the card language);
+the app only
 mirrors them in `src/auth/permissions.ts` to hide buttons.
 
 ## Setting it up
@@ -91,6 +92,13 @@ with its own icon, and "Add cards" opens the camera directly.
 - **One card at a time**: pick one or more photos with a single card each.
 - Cards you can't find in the catalog can be saved with just a name and matched
   later from the card's page.
+- **Japanese cards** are supported. The reader spots a Japanese set code
+  (like `SV4a`) in the corner, reads the card again in Japanese to confirm
+  the name, and looks it up in the catalog's Japanese data. Their prices come
+  from Cardmarket in euros, converted to dollars with the European Central
+  Bank's daily rate (free, from frankfurter.dev). In search, tick
+  **Japanese card** to look up Japanese sets by number; they show a JP badge
+  in the binder.
 - Adding a card you already have raises its count on the existing row instead
   of storing a second row and a second photo. The bulk importer does the same.
 

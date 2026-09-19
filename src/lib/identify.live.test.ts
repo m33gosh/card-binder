@@ -20,3 +20,16 @@ describe.skipIf(!LIVE)('identifyFromText on real reads', () => {
     expect(wrong).toBeLessThanOrEqual(4)
   }, 120000)
 })
+
+describe.skipIf(!LIVE)('identifyJapanese on a real read', () => {
+  it('finds a Japanese card from its set code, number and Japanese name', async () => {
+    const latin = '221t HP 150 90- :14m jic : 48.2kg * 1 < ath*l 150 56 R x 2 Illus. Hideki Ishikawa G sy4a 205/190 S tE tr h ©2023 Pokémon/Nintendo/Cr'
+    const ja = '2進化 オリーヴァ オリーニョから進化 M 150 全国図鑑NO.0930 オリープポケモン ソーラービーム 150 55点 x2 Hllus.'
+    const { identifyJapanese } = await import('./identify')
+    const result = await identifyJapanese(latin, ja)
+    expect(result.language).toBe('ja')
+    expect(result.candidates[0]?.id).toBe('SV4a-205')
+    expect(result.candidates[0]?.name).toBe('オリーヴァ')
+    expect(result.candidates[0]?.prices.normal ?? 0).toBeGreaterThan(0)
+  }, 60000)
+})
