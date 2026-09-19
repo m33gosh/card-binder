@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nameFits } from './identify'
+import { appearsInText, nameFits } from './identify'
 
 describe('nameFits', () => {
   it('needs a whole-name match for a single word', () => {
@@ -13,5 +13,17 @@ describe('nameFits', () => {
     expect(nameFits('Nest Ball', 'Nest Ball')).toBe(true)
     expect(nameFits('Rapid Strike Urshifu V', 'Strike Urshifu')).toBe(true)
     expect(nameFits('Sharpedo ex', 'Sharp Fang')).toBe(false)
+  })
+})
+
+describe('appearsInText', () => {
+  it('finds the distinctive word of the name in the read text', () => {
+    expect(appearsInText('STAGE 1 Houndoom Evolves from Houndour HP 130 Daring Strike', 'Houndoom')).toBe(true)
+    expect(appearsInText('BASIC Mega Lucario ex HP 340', 'Mega Lucario ex')).toBe(true)
+    expect(appearsInText('Item Antique Armor Fossil HP 60', 'Antique Armor Fossil')).toBe(true)
+  })
+  it('rejects a card whose name was not read', () => {
+    expect(appearsInText('STAGE 1 Houndoom HP 130 Daring Strike', 'Emolga')).toBe(false)
+    expect(appearsInText('BASIC Mega Lucario ex HP 340', 'Mega Delphox ex')).toBe(false)
   })
 })

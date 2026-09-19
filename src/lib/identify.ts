@@ -66,8 +66,14 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   const text = await readCornerText(await cornerCrop(cardBlob))
   const ref = parseCardRef(text, codes)
   const name = parseCardName(text)
-  // exact: set + number
+  // exact: set + number. Several sets share a size, so when the set code wasn't
+  // read the number alone can land on the wrong set; check the name we read.
   let candidates = ref ? await lookupRef(ref) : []
+  if (candidates.length > 0) {
+    const confirmed = candidates.filter((c) => appearsInText(text, c.name))
+    if (confirmed.length) candidates = confirmed
+    else if (/\bHP\b/i.test(text) && ref && !ref.code) candidates = [] // name band was readable but doesn't match: don't guess
+  }
   // otherwise the name: try the guesses longest-first until the catalog answers,
   // narrowed by the printed total when we have one
   if (candidates.length === 0 && name) {
@@ -96,6 +102,14 @@ export function nameFits(cardName: string, guess: string): boolean {
   if (!g) return false
   if (!g.includes(' ')) return a === g || a.split(' ')[0] === g && g.length >= 5 && /^(ex|v|gx|vmax|vstar)$/.test(a.split(' ')[1] ?? '')
   return (' ' + a + ' ').includes(' ' + g + ' ')
+}
+
+/** Is this card's name somewhere in the text read off the photo? */
+export function appearsInText(text: string, cardName: string): boolean {
+  const t = ' ' + simplify(text) + ' '
+  const words = simplify(cardName).split(' ').filter((w) => w.length >= 4 && !/^(mega|alolan|galarian|hisuian|paldean|basic|energy)$/.test(w))
+  const key = words[0] ?? simplify(cardName).split(' ')[0]
+  return key.length >= 3 && t.includes(' ' + key + ' ')
 }
 
 function setSize(card: CatalogCard, sets: Awaited<ReturnType<typeof getSets>>): number | undefined {
