@@ -72,7 +72,7 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   // narrowed by the printed total when we have one
   if (candidates.length === 0 && name) {
     for (const guess of nameCandidates(text).slice(0, 4)) {
-      const byName = await pricing.search({ name: guess })
+      const byName = (await pricing.search({ name: guess })).filter((c) => nameFits(c.name, guess))
       if (byName.length === 0) continue
       const total = ref?.total
       const narrowed = total ? byName.filter((c) => String(setSize(c, sets)) === total) : byName
@@ -81,6 +81,21 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
     }
   }
   return { ref, name, text, candidates }
+}
+
+const simplify = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+
+/**
+ * Does a catalog card's name genuinely match a guess read off a photo?
+ * A one-word guess must be the whole name ("Umbreon"), never a fragment
+ * ("Sharp" is not Sharpedo). Longer guesses must appear as whole words.
+ */
+export function nameFits(cardName: string, guess: string): boolean {
+  const a = simplify(cardName)
+  const g = simplify(guess)
+  if (!g) return false
+  if (!g.includes(' ')) return a === g || a.split(' ')[0] === g && g.length >= 5 && /^(ex|v|gx|vmax|vstar)$/.test(a.split(' ')[1] ?? '')
+  return (' ' + a + ' ').includes(' ' + g + ' ')
 }
 
 function setSize(card: CatalogCard, sets: Awaited<ReturnType<typeof getSets>>): number | undefined {
