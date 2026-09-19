@@ -13,7 +13,7 @@ wrapped as an iPad app later.
 | Front end | React + TypeScript + Vite | Static build, so GitHub Pages can host it. |
 | Sign-in | Supabase Auth with the Google provider | Gmail accounts, no server of our own. |
 | Database + photos | Supabase Postgres + Storage | Free tier, and Postgres row security enforces the roles. |
-| Prices | [pokemontcg.io](https://pokemontcg.io) (TCGplayer market prices) | Free, current (sets from this month are in it), works straight from the browser. |
+| Prices | [TCGdex](https://tcgdex.dev) (TCGplayer market prices) | Free, no key, no rate limit, current sets, works straight from the browser. |
 | iPad | Capacitor | Wraps the same web build into a native iOS app. |
 
 Every signed-in person has their own private binder; nobody, admins included,
@@ -68,10 +68,8 @@ have your son sign in, open **People**, and set him to "Has a binder".
 
 1. Push this folder to a GitHub repository on the `main` branch.
 2. Repository Settings → Pages → Source: **GitHub Actions**.
-3. Settings → Secrets and variables → Actions → **Variables** tab, add:
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and optionally
-   `VITE_POKEMONTCG_API_KEY` (free key from <https://dev.pokemontcg.io>, raises
-   the daily request limit from 1,000 to 20,000).
+3. Settings → Secrets and variables → Actions → **Variables** tab, add
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 4. Every push to `main` runs `.github/workflows/deploy.yml`: tests, build, deploy.
    The site lands at `https://YOUR-USER.github.io/YOUR-REPO/`.
 
@@ -139,7 +137,7 @@ Layout of `src/`:
 ```
 auth/            AuthProvider (Supabase session + profile), permissions (RBAC mirror)
 lib/supabase.ts  client
-lib/pricing/     PricingSource interface + pokemontcg.io implementation
+lib/pricing/     PricingSource interface + TCGdex implementation (pokemontcg.io kept as a spare)
 lib/images.ts    HEIC conversion, resizing, grid cropping
 lib/camera.ts    photo picking (web + native)
 features/cards/  types and data access for cards, photos, price history
@@ -154,9 +152,13 @@ pages/           Collection, CardDetail, AddCards, People, Login, Pending
   card from its photo would be the natural next feature (the crops are already
   isolated, so a model could take them as input).
 - Prices are USD from TCGplayer. Cardmarket (EUR) data is available from the
-  same API if you'd rather.
-- The free API occasionally returns a server error; the app retries once and
-  otherwise asks you to try again.
+  same catalog if you'd rather.
+- The catalog moved from pokemontcg.io to TCGdex after a day of outages;
+  `src/lib/pricing/pokemontcg.ts` is kept as a spare source and
+  `scripts/migrate-catalog-ids.mjs` re-points stored ids between them.
+- Set codes printed on cards (PBL, OBF, …) are bundled in
+  `src/lib/pricing/tcgdexSetCodes.json`; run `node scripts/update-set-codes.mjs`
+  now and then to pick up new sets.
 
 ## Bulk import from a folder of photos
 

@@ -17,7 +17,20 @@ export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props)
   const [results, setResults] = useState<CatalogCard[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [picking, setPicking] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
+
+  // search results are lightweight; fetch the full card (with prices) on pick
+  async function pick(card: CatalogCard) {
+    setPicking(card.id)
+    try {
+      onSelect((await pricing.getCard(card.id)) ?? card)
+    } catch {
+      onSelect(card)
+    } finally {
+      setPicking(null)
+    }
+  }
 
   useEffect(() => {
     window.clearTimeout(timer.current)
@@ -63,11 +76,12 @@ export function CatalogSearch({ initialName = '', selectedId, onSelect }: Props)
         {results.map((c) => {
           const quote = pickPrice(c, 'normal', pricing.name)
           return (
-            <button key={c.id} type="button" className={`result${selectedId === c.id ? ' selected' : ''}`} onClick={() => onSelect(c)}>
+            <button key={c.id} type="button" className={`result${selectedId === c.id ? ' selected' : ''}`} onClick={() => void pick(c)} disabled={picking !== null}>
               <img src={c.images.small} alt="" loading="lazy" />
               <div className="name">{c.name}</div>
               <div className="meta">{c.set.name} #{c.number}</div>
-              <div className="meta">{quote ? money(quote.price) : 'no price'}</div>
+              {quote && <div className="meta">{money(quote.price)}</div>}
+              {picking === c.id && <div className="meta">Loading…</div>}
             </button>
           )
         })}

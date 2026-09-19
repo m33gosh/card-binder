@@ -9,7 +9,7 @@ if (existsSync('.env.local')) for (const l of readFileSync('.env.local', 'utf8')
 const s = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 const parseDamage = (t) => { const m = /\d+/.exec(t ?? ''); return m ? Number(m[0]) : 0 }
 async function fetchCard(id) {
-  const u = `https://api.pokemontcg.io/v2/cards/${encodeURIComponent(id)}?select=id,supertype,types,hp,attacks`
+  const u = `https://api.tcgdex.net/v2/en/cards/${encodeURIComponent(id)}`
   for (let i = 0; i < 12; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(40000) }); if (r.status === 404) return null; if (r.ok) return (await r.json()).data } catch {} await new Promise((r) => setTimeout(r, 4000 + 3000 * i)) }
   throw new Error('catalog unreachable for ' + id)
 }
@@ -23,9 +23,9 @@ for (const row of rows) {
   if (card === undefined) { card = await fetchCard(row.api_card_id); cache.set(row.api_card_id, card) }
   if (!card) { console.log(`  ${row.name}: not in catalog any more`); continue }
   const patch = {
-    supertype: card.supertype ?? null,
+    supertype: card.category === 'Pokemon' ? 'Pokémon' : card.category ?? null,
     types: card.types ?? null,
-    hp: card.hp && /^\d+$/.test(card.hp) ? Number(card.hp) : null,
+    hp: typeof card.hp === 'number' ? card.hp : null,
     attack_power: card.attacks ? card.attacks.reduce((sum, a) => sum + parseDamage(a.damage), 0) : null,
   }
   const { error: uErr } = await s.from('cards').update(patch).eq('id', row.id)

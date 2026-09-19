@@ -1,4 +1,4 @@
-import { pokemonTcgSource } from './pokemontcg'
+import { tcgdexSource } from './tcgdex'
 
 export * from './types'
-export const pricing = pokemonTcgSource
+export const pricing = tcgdexSource

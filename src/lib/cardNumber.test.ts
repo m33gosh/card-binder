@@ -12,8 +12,8 @@ describe('parseCardRef', () => {
   })
   it('reads energy and promo formats', () => {
     expect(parseCardRef('SVE EN 007 ©2023', codes)).toEqual({ number: '7', code: 'SVE' })
-    expect(parseCardRef('weakness x2 SWSH176 ©2021')).toEqual({ number: 'SWSH176', code: 'PR-SW' })
-    expect(parseCardRef('G SVP EN 103')).toEqual({ number: '103', code: 'PR-SV' })
+    expect(parseCardRef('weakness x2 SWSH176 ©2021')).toEqual({ number: 'SWSH176', code: 'SWSH' })
+    expect(parseCardRef('G SVP EN 103')).toEqual({ number: '103', code: 'SVP' })
   })
   it('gives up on noise', () => {
     expect(parseCardRef('Basic Energy Basic Energy')).toBeNull()

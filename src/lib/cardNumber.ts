@@ -11,8 +11,8 @@ export interface CardRef {
   code?: string
 }
 
-// codes printed on the card that differ from what the catalog calls the set
-const PROMO_CODES: Record<string, string> = { SVP: 'PR-SV', SWSH: 'PR-SW', SM: 'PR-SM' }
+// promo cards print a prefix instead of N/M; map it to the catalog's set code
+const PROMO_CODES: Record<string, string> = { SVP: 'SVP', SWSH: 'SWSH', SM: 'SMP', XY: 'XYP' }
 
 const strip = (n: string) => n.replace(/^0+(?=\d)/, '')
 
