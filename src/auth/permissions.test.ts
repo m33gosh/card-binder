@@ -5,9 +5,12 @@ describe('can', () => {
   it('blocks pending users from everything', () => {
     expect(can('pending', 'collection:view')).toBe(false)
   })
-  it('lets viewers look but not add', () => {
-    expect(can('viewer', 'collection:view')).toBe(true)
-    expect(can('viewer', 'card:create')).toBe(false)
+  it('editors have a binder they can fill', () => {
+    expect(can('editor', 'collection:view')).toBe(true)
+    expect(can('editor', 'card:create')).toBe(true)
+  })
+  it('treats a retired or unknown role as no access', () => {
+    expect(can('viewer' as never, 'collection:view')).toBe(false)
   })
   it('only admins manage users', () => {
     expect(can('editor', 'users:manage')).toBe(false)

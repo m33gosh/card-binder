@@ -18,12 +18,11 @@ wrapped as an iPad app later.
 
 Every signed-in person has their own private binder; nobody, admins included,
 can see anyone else's cards or photos. Roles: **pending** (signed in, no
-access yet), **viewer** (can sign in), **editor** (fills and manages their own
-binder), **admin** (also approves people on the People page). The first
-account to sign in becomes admin. Every rule lives in `supabase/migrations/`
-as a row-security policy (`0001` sets up the schema, `0002` makes binders
-private); the app only mirrors them in `src/auth/permissions.ts` to hide
-buttons.
+access yet), **editor** (has a binder), **admin** (also approves people on the
+People page). The first account to sign in becomes admin. Every rule lives in
+`supabase/migrations/` as a row-security policy (`0001` sets up the schema,
+`0002` makes binders private, `0003` retires the viewer role); the app only
+mirrors them in `src/auth/permissions.ts` to hide buttons.
 
 ## Setting it up
 
@@ -62,7 +61,7 @@ npm run dev                    # http://localhost:5173
 ```
 
 Sign in with your own Google account first: that account becomes admin. Then
-have your son sign in, open **People**, and set him to "Can add cards".
+have your son sign in, open **People**, and set him to "Has a binder".
 
 ### 4. Deploy to GitHub Pages
 

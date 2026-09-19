@@ -2,14 +2,13 @@
 // The UI uses this to show/hide actions; Postgres row security is what
 // actually enforces it, so a bug here can't leak or corrupt data.
 
-export type Role = 'pending' | 'viewer' | 'editor' | 'admin'
+export type Role = 'pending' | 'editor' | 'admin'
 
-export const ROLES: Role[] = ['pending', 'viewer', 'editor', 'admin']
+export const ROLES: Role[] = ['pending', 'editor', 'admin']
 
 export const ROLE_LABELS: Record<Role, string> = {
   pending: 'Waiting for approval',
-  viewer: 'Can look',
-  editor: 'Can add cards',
+  editor: 'Has a binder',
   admin: 'Runs the app',
 }
 
@@ -21,10 +20,10 @@ export type Action =
   | 'prices:refresh'
   | 'users:manage'
 
-const RANK: Record<Role, number> = { pending: 0, viewer: 1, editor: 2, admin: 3 }
+const RANK: Record<Role, number> = { pending: 0, editor: 2, admin: 3 }
 
 const MIN_ROLE: Record<Action, Role> = {
-  'collection:view': 'viewer',
+  'collection:view': 'editor',
   'card:create': 'editor',
   'card:edit': 'editor',
   'card:delete': 'editor',
@@ -34,7 +33,8 @@ const MIN_ROLE: Record<Action, Role> = {
 
 export function can(role: Role | null | undefined, action: Action): boolean {
   if (!role) return false
-  return RANK[role] >= RANK[MIN_ROLE[action]]
+  // an unknown role (e.g. the retired 'viewer') gets nothing
+  return (RANK[role] ?? 0) >= RANK[MIN_ROLE[action]]
 }
 
 /** Every binder is private: only its owner can change it, admins included. */

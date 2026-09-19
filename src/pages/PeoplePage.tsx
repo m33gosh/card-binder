@@ -48,7 +48,7 @@ export function PeoplePage() {
         ))}
       </div>
       <div className="panel small muted">
-        <p><strong>Can look</strong> can sign in and see their own (empty) binder. <strong>Can add cards</strong> fills and manages their own binder. <strong>Runs the app</strong> can also approve people here. Nobody can see anyone else's cards.</p>
+        <p><strong>Has a binder</strong> can fill and manage their own binder. <strong>Runs the app</strong> can also approve people here. Nobody can see anyone else's cards.</p>
         <p style={{ margin: 0 }}>The same rules are enforced by the database, not just hidden in the app.</p>
       </div>
     </div>
