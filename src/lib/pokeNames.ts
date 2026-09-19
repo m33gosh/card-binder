@@ -48,3 +48,26 @@ export async function japaneseSpeciesName(english: string): Promise<string | nul
   }
   return ja
 }
+
+/** Japanese species name by National Pokédex number. */
+export async function japaneseSpeciesNameByDex(dex: number): Promise<string | null> {
+  const cache = readCache()
+  const key = `#${dex}`
+  if (key in cache) return cache[key] || null
+  let ja: string | null = null
+  try {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${dex}`)
+    if (res.ok) {
+      const body = (await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }
+      ja = body.names?.find((n) => n.language.name === 'ja')?.name ?? body.names?.find((n) => n.language.name === 'ja-Hrkt')?.name ?? null
+    }
+  } catch {
+    return null
+  }
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: ja ?? '' }))
+  } catch {
+    /* ignore */
+  }
+  return ja
+}

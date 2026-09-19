@@ -123,3 +123,16 @@ export function japaneseCodeIn(text: string, japaneseCodes: string[], englishCod
   const re = new RegExp(`\\b(${ja.map((c) => c.replace(/[-+.]/g, '\\$&')).join('|')})\\b`)
   return re.exec(t)?.[1] ?? null
 }
+
+/** Asian-language cards print metric stats ("3.2kg", "0.3m") and 全国図鑑No.; English cards print lbs and NO. */
+export function looksNonEnglish(text: string): boolean {
+  return /\d\s*kg\b/i.test(text) || /\bN[O0]?\.?\s*0\d{3}\b/i.test(text)
+}
+
+/** National Pokédex number from "全国図鑑No.0013", read by OCR as "N0013" / "NO.0013" / "No. 013". */
+export function dexNumberIn(text: string): number | null {
+  const m = /\bN[Oo0]?\.?\s*0*(\d{1,4})\b/.exec(text.replace(/[Ｎ]/g, 'N'))
+  if (!m) return null
+  const n = Number(m[1])
+  return n >= 1 && n <= 1100 ? n : null
+}

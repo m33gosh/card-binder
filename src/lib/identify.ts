@@ -3,7 +3,8 @@
 import { supabase } from './supabase'
 import { pricing, type CatalogCard, type CatalogLang } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, japaneseCodeIn, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
+import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
+import { japaneseSpeciesNameByDex } from './pokeNames'
 import { getSets } from './catalogSets'
 
 /**
@@ -66,10 +67,11 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   const text = await readCornerText(image)
   const result = await identifyFromText(text)
   if (result.candidates.length > 0) return result
-  // nothing in the English catalog: does the corner carry a Japanese set code?
+  // nothing in the English catalog: a Japanese set code, metric stats or a
+  // Pokédex number in the corner mean this is probably a Japanese card
   const [ja, en] = await Promise.all([getSets('ja'), getSets('en')])
   const jaCode = japaneseCodeIn(text, ja.map((s) => s.id), en.map((s) => s.ptcgoCode ?? ''))
-  if (!jaCode) return result
+  if (!jaCode && !looksNonEnglish(text)) return result
   // a second read in Japanese gets the name and attacks for confirmation
   const jaText = await readCornerText(image, 'jpn').catch(() => '')
   return identifyJapanese(text, jaText)
@@ -79,17 +81,45 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
 export async function identifyJapanese(latinText: string, jaText: string): Promise<Identification> {
   const sets = await getSets('ja')
   const ref = parseCardRef(latinText, sets.map((s) => s.id))
-  let candidates = ref ? await lookupRef(ref, 'ja') : []
-  if (candidates.length > 1 && jaText) {
-    const confirmed = candidates.filter((c) => jaText.includes(c.name))
-    if (confirmed.length) candidates = confirmed
+  const jaName = (c: CatalogCard) => jaText.includes(c.name) || c.name.includes(readJaName(jaText) ?? '\u0000')
+
+  // 1. set code + number is exact
+  let candidates = ref?.code ? await lookupRef(ref, 'ja') : []
+
+  // 2. Pokédex number → species → its cards, narrowed to the collector number.
+  //    Works even when the set code was missed (the "151" set mark fools the reader)
+  if (candidates.length === 0) {
+    const dex = dexNumberIn(latinText)
+    const species = dex ? await japaneseSpeciesNameByDex(dex) : null
+    if (species) {
+      const prints = await pricing.search({ name: species, lang: 'ja' })
+      const byNumber = ref ? prints.filter((c) => c.number.toUpperCase() === ref.number.toUpperCase()) : []
+      candidates = byNumber.length ? byNumber : prints.slice(0, 5)
+    }
   }
+
+  // 3. the Japanese read alone: the card's name in kana/kanji
   if (candidates.length === 0 && jaText) {
-    // fall back to the Japanese name: the first run of kana/kanji of 2+ characters
-    const name = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー]{2,}/u.exec(jaText)?.[0]
+    const name = readJaName(jaText)
     if (name) candidates = (await pricing.search({ name, lang: 'ja' })).filter((c) => c.name.includes(name) || name.includes(c.name)).slice(0, 5)
   }
+
+  // the Japanese read confirms which of several it is
+  if (candidates.length > 1 && jaText) {
+    const confirmed = candidates.filter(jaName)
+    if (confirmed.length) candidates = confirmed
+  }
+  // search results are brief; fetch the chosen card in full (prices, stats)
+  if (candidates[0] && Object.keys(candidates[0].prices).length === 0) {
+    const full = await pricing.getCard(candidates[0].id, 'ja').catch(() => null)
+    if (full) candidates[0] = full
+  }
   return { ref, name: candidates[0]?.name ?? null, text: jaText ? `${latinText}\n${jaText}` : latinText, candidates, language: 'ja' }
+}
+
+/** First run of kana/kanji of 2+ characters: on a Japanese read, that's the name. */
+function readJaName(jaText: string): string | null {
+  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー]{2,}/u.exec(jaText)?.[0] ?? null
 }
 
 /** Everything after the read: pure text handling plus catalog lookups. */

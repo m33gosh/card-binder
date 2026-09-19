@@ -33,3 +33,13 @@ describe.skipIf(!LIVE)('identifyJapanese on a real read', () => {
     expect(result.candidates[0]?.prices.normal ?? 0).toBeGreaterThan(0)
   }, 60000)
 })
+
+describe.skipIf(!LIVE)('identifyJapanese from a Pokédex number', () => {
+  it('finds the Japanese 151 Weedle when the set code was missed', async () => {
+    const latin = 'Si HP. 50 N0013 EER 95: 03m ##: 3.2kg 10 20 Sh F x 2 tr 15illus. nisimono G 151 C 013/151 C 2025 Pokemon/Nintendo/Creatures/GAME FREAK. weaki illus. Pl'
+    const { identifyJapanese } = await import('./identify')
+    const result = await identifyJapanese(latin, '')
+    expect(result.candidates[0]?.id).toBe('SV2a-013')
+    expect(result.candidates[0]?.name).toBe('ビードル')
+  }, 60000)
+})

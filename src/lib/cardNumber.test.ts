@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateSets, japaneseCodeIn, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
+import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
 
 const codes = ['PBL', 'CRI', 'WHT', 'OBF', 'SVE']
 
@@ -79,5 +79,15 @@ describe('japanese cards', () => {
     const sets: SetInfo[] = [{ id: 'SV4a', name: 'レイジングサーフ', ptcgoCode: 'SV4a', printedTotal: 190, releaseDate: '00150' }]
     expect(parseCardRef('sy4a 205/190', ['SV4a'])).toEqual({ number: '205', total: '190', code: 'SV4A' })
     expect(candidateSets({ number: '205', total: '190', code: 'SV4A' }, sets).map((s) => s.id)).toEqual(['SV4a'])
+  })
+})
+
+describe('non-English cards', () => {
+  const read = 'Si HP. 50 N0013 EER 95: 03m ##: 3.2kg 10 20 Sh F x 2 tr 15illus. nisimono G 151 C 013/151 C 2025 Pokemon'
+  it('spots metric stats and a Pokédex number', () => {
+    expect(looksNonEnglish(read)).toBe(true)
+    expect(looksNonEnglish('BASIC Pikachu HP 60 NO. 025 Mouse Pokémon HT: 1\'4" WT: 13.2 lbs')).toBe(false)
+    expect(dexNumberIn(read)).toBe(13)
+    expect(dexNumberIn('全国図鑑No.0930 オリープポケモン')).toBe(930)
   })
 })
