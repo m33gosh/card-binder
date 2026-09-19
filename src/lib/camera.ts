@@ -19,12 +19,23 @@ export async function pickPhotos(options: { multiple?: boolean } = {}): Promise<
     return [new File([blob], `photo.${photo.format || 'jpeg'}`, { type: blob.type || 'image/jpeg' })]
   }
   return new Promise((resolve) => {
+    // iOS Safari can drop the result of a file input that isn't in the
+    // document, and the camera takes long enough for that to bite. Keep the
+    // input attached (and referenced) until it answers.
+    document.querySelector('#photo-picker')?.remove()
     const input = document.createElement('input')
+    input.id = 'photo-picker'
     input.type = 'file'
     input.accept = 'image/*,.heic,.heif'
     input.multiple = Boolean(options.multiple)
-    input.onchange = () => resolve(Array.from(input.files ?? []))
-    input.oncancel = () => resolve([])
+    input.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px'
+    const finish = (files: File[]) => {
+      input.remove()
+      resolve(files)
+    }
+    input.addEventListener('change', () => finish(Array.from(input.files ?? [])))
+    input.addEventListener('cancel', () => finish([]))
+    document.body.appendChild(input)
     input.click()
   })
 }
