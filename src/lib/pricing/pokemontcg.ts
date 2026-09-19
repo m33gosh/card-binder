@@ -1,4 +1,4 @@
-import type { CatalogCard, PricingSource, Variant } from './types'
+import type { CatalogCard, CatalogSet, PricingSource, Variant } from './types'
 
 // https://docs.pokemontcg.io — free, CORS-friendly, TCGplayer market prices.
 // Without a key you get 1,000 requests/day, plenty for a family binder.
@@ -101,10 +101,23 @@ export const pokemonTcgSource: PricingSource = {
   },
 
   async listSets() {
-    const body = await request<{ data: Array<{ id: string; name: string; series: string; releaseDate: string }> }>(
-      '/sets',
-      { orderBy: '-releaseDate', select: 'id,name,series,releaseDate', pageSize: 250 },
-    )
+    const body = await request<{ data: CatalogSet[] }>('/sets', {
+      orderBy: '-releaseDate',
+      select: 'id,name,series,releaseDate,ptcgoCode,printedTotal',
+      pageSize: 250,
+    })
     return body.data ?? []
+  },
+
+  async findByNumber(number, setIds) {
+    if (!number.trim() || setIds.length === 0) return []
+    const sets = setIds.map((id) => `set.id:${id}`).join(' OR ')
+    const body = await request<{ data: ApiCard[] }>('/cards', {
+      q: `number:${number.trim()} (${sets})`,
+      pageSize: 24,
+      orderBy: '-set.releaseDate',
+      select: 'id,name,number,rarity,set,images,tcgplayer',
+    })
+    return (body.data ?? []).map(toCatalogCard)
   },
 }

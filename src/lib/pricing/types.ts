@@ -43,7 +43,18 @@ export interface PricingSource {
   readonly name: string
   search(query: { name: string; setId?: string; number?: string; page?: number }): Promise<CatalogCard[]>
   getCard(id: string): Promise<CatalogCard | null>
-  listSets(): Promise<Array<{ id: string; name: string; series: string; releaseDate: string }>>
+  listSets(): Promise<CatalogSet[]>
+  /** cards with this collector number in any of the given sets */
+  findByNumber(number: string, setIds: string[]): Promise<CatalogCard[]>
+}
+
+export interface CatalogSet {
+  id: string
+  name: string
+  series?: string
+  releaseDate?: string
+  ptcgoCode?: string
+  printedTotal?: number
 }
 
 /**

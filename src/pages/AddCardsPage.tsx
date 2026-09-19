@@ -10,6 +10,7 @@ import { BinderCropper } from '@/features/import/BinderCropper'
 import { pickPhotos } from '@/lib/camera'
 import { DEFAULT_GRID, cropRegion, gridCells, loadImage, normalizeForUpload, toDecodableBlob, type GridSpec } from '@/lib/images'
 import { pickPrice, pricing, VARIANT_LABELS, type CatalogCard, type Variant } from '@/lib/pricing'
+import { identifyCard } from '@/lib/identify'
 
 interface Draft {
   id: string
@@ -18,6 +19,9 @@ interface Draft {
   match: CatalogCard | null
   name: string
   variant: Variant
+  /** what the corner text suggested; needs a human to confirm */
+  suggested: CatalogCard | null
+  reading: 'waiting' | 'reading' | 'done' | 'failed'
 }
 
 type Step =
@@ -44,7 +48,7 @@ export function AddCardsPage() {
   }
 
   function draftFrom(blob: Blob): Draft {
-    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal' }
+    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting' }
   }
 
   async function startBinderPage() {
@@ -71,7 +75,8 @@ export function AddCardsPage() {
     try {
       const drafts: Draft[] = []
       for (const file of files) drafts.push(draftFrom(await normalizeForUpload(await decode(file))))
-      setStep({ kind: 'review', drafts, identifying: drafts[0]?.id ?? null })
+      setStep({ kind: 'review', drafts, identifying: null })
+      void readCorners(drafts)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read those photos.')
       setStep({ kind: 'choose' })
@@ -82,7 +87,25 @@ export function AddCardsPage() {
     if (step.kind !== 'crop') return
     const drafts: Draft[] = []
     for (const cell of gridCells(step.spec)) drafts.push(draftFrom(await cropRegion(step.img, cell)))
-    setStep({ kind: 'review', drafts, identifying: drafts[0]?.id ?? null })
+    setStep({ kind: 'review', drafts, identifying: null })
+    void readCorners(drafts)
+  }
+
+  /** Read each card's corner and suggest a match; two at a time to be gentle on the free services. */
+  async function readCorners(drafts: Draft[]) {
+    const queue = [...drafts]
+    const worker = async () => {
+      for (let d = queue.shift(); d; d = queue.shift()) {
+        patchDraft(d.id, { reading: 'reading' })
+        try {
+          const result = await identifyCard(d.blob)
+          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null })
+        } catch {
+          patchDraft(d.id, { reading: 'failed' })
+        }
+      }
+    }
+    await Promise.all([worker(), worker()])
   }
 
   function patchDraft(id: string, patch: Partial<Draft>) {
@@ -100,7 +123,7 @@ export function AddCardsPage() {
   function identified(id: string, match: CatalogCard) {
     setStep((s) => {
       if (s.kind !== 'review') return s
-      const drafts = s.drafts.map((d) => (d.id === id ? { ...d, match, name: match.name } : d))
+      const drafts = s.drafts.map((d) => (d.id === id ? { ...d, match, name: match.name, suggested: null } : d))
       // move on to the next card that still needs a name
       const next = drafts.find((d) => !d.match && !d.name)
       return { ...s, drafts, identifying: next?.id ?? null }
@@ -189,6 +212,7 @@ export function AddCardsPage() {
           identifying={step.identifying}
           onIdentify={(id) => setStep({ ...step, identifying: id })}
           onIdentified={identified}
+          onConfirm={(id) => setStep((s) => (s.kind === 'review' ? { ...s, drafts: s.drafts.map((d) => (d.id === id && d.suggested ? { ...d, match: d.suggested, name: d.suggested.name, suggested: null } : d)) } : s))}
           onPatch={patchDraft}
           onRemove={removeDraft}
           onSave={() => void saveAll()}
@@ -212,22 +236,29 @@ interface ReviewProps {
   identifying: string | null
   onIdentify: (id: string | null) => void
   onIdentified: (id: string, match: CatalogCard) => void
+  onConfirm: (id: string) => void
   onPatch: (id: string, patch: Partial<Draft>) => void
   onRemove: (id: string) => void
   onSave: () => void
   onCancel: () => void
 }
 
-function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onPatch, onRemove, onSave, onCancel }: ReviewProps) {
+function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, onPatch, onRemove, onSave, onCancel }: ReviewProps) {
   const current = drafts.find((d) => d.id === identifying) ?? null
   const ready = drafts.filter((d) => d.match || d.name.trim()).length
+  const reading = drafts.filter((d) => d.reading === 'waiting' || d.reading === 'reading').length
+  const suggestions = drafts.filter((d) => !d.match && d.suggested).length
   const total = drafts.reduce((sum, d) => sum + (d.match ? pickPrice(d.match, d.variant, pricing.name)?.price ?? 0 : 0), 0)
 
   return (
     <>
       <div>
         <h1>Name each card</h1>
-        <p className="muted">Tap a card, then search for it so we can look up its price. {ready} of {drafts.length} ready{total > 0 && `, worth about ${money(total)}`}.</p>
+        <p className="muted">
+          {reading > 0 && `Reading the numbers off ${reading} ${reading === 1 ? 'card' : 'cards'}… `}
+          {suggestions > 0 && `${suggestions} ${suggestions === 1 ? 'card has a match' : 'cards have matches'} to check. `}
+          {ready} of {drafts.length} ready{total > 0 && `, worth about ${money(total)}`}.
+        </p>
       </div>
       {current && (
         <div className="panel">
@@ -251,9 +282,21 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onPatch, on
 
       <div className="review-grid">
         {drafts.map((d) => (
-          <div key={d.id} className={`review-item${d.match ? ' matched' : ''}`}>
-            <img src={d.url} alt="" />
-            <div className="name">{d.match?.name ?? (d.name || 'Not named yet')}</div>
+          <div key={d.id} className={`review-item${d.match ? ' matched' : ''}${!d.match && d.suggested ? ' suggested' : ''}`}>
+            <div className="pair">
+              <img src={d.url} alt="" />
+              {!d.match && d.suggested && <img src={d.suggested.images.small} alt={`${d.suggested.name} from the catalog`} />}
+            </div>
+            {!d.match && d.suggested ? (
+              <>
+                <div className="name">Is it {d.suggested.name}?</div>
+                <div className="meta small muted">{d.suggested.set.name} #{d.suggested.number}</div>
+                <button className="btn primary" onClick={() => onConfirm(d.id)}>Yes, that's it</button>
+                <button className="btn" onClick={() => onIdentify(d.id)}>No, find it</button>
+              </>
+            ) : (
+              <>
+                <div className="name">{d.match?.name ?? (d.name || (d.reading === 'waiting' || d.reading === 'reading' ? 'Reading…' : 'Not named yet'))}</div>
             {d.match && (
               <select className="select" value={d.variant} onChange={(e) => onPatch(d.id, { variant: e.target.value as Variant })} style={{ minHeight: 36, padding: '4px 8px', fontSize: '0.85rem' }}>
                 {(Object.keys(d.match.prices).length ? (Object.keys(d.match.prices) as Variant[]) : (['normal'] as Variant[])).map((v) => (
@@ -261,7 +304,9 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onPatch, on
                 ))}
               </select>
             )}
-            <button className={`btn${identifying === d.id ? ' primary' : ''}`} onClick={() => onIdentify(d.id)}>{d.match ? 'Change' : 'Find it'}</button>
+                <button className={`btn${identifying === d.id ? ' primary' : ''}`} onClick={() => onIdentify(d.id)}>{d.match ? 'Change' : 'Find it'}</button>
+              </>
+            )}
             <button className="btn ghost danger" onClick={() => onRemove(d.id)}>Remove</button>
           </div>
         ))}

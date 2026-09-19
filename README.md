@@ -165,3 +165,26 @@ it runs only on your own machine: put `SUPABASE_SERVICE_ROLE_KEY=...` in
 node scripts/bulk-import.mjs manifest.json photos/ --dry-run   # preview
 node scripts/bulk-import.mjs manifest.json photos/             # import
 ```
+
+## Reading card numbers from photos (optional)
+
+After a page is cut into cards, the app can read the set code and number
+printed in each card's bottom-left corner and suggest the exact catalog match,
+which you confirm with one tap. It uses [OCR.space](https://ocr.space), which
+has a free tier (25,000 reads a month, no card needed). In testing on binder-page
+photos it read about three out of four regular cards correctly; single-card
+photos do better. Cards it can't read fall back to the normal search.
+
+The key lives in a Supabase Edge Function, never in the web app, and the
+function only answers signed-in editors and admins. Setup, once:
+
+```bash
+npx supabase login
+npx supabase secrets set OCR_SPACE_API_KEY=your-key --project-ref YOUR-PROJECT-REF
+npx supabase functions deploy ocr-card --project-ref YOUR-PROJECT-REF
+```
+
+Without the function deployed, the app simply skips the suggestion step.
+
+Tip that works without any of this: type the number printed on the card, like
+`57/191`, into the search box and it finds the exact card.

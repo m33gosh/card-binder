@@ -1,0 +1,5 @@
+# Only the pieces the CLI needs for deploying edge functions.
+project_id = "card-binder"
+
+[functions.ocr-card]
+verify_jwt = true

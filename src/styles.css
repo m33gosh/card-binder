@@ -197,6 +197,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .review-item { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .review-item img { aspect-ratio: 63/88; object-fit: cover; border-radius: 8px; width: 100%; }
 .review-item.matched { border-color: var(--green); }
+.review-item.suggested { border-color: var(--yellow); box-shadow: 0 0 0 2px var(--yellow); }
+.review-item .pair { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.review-item .pair:has(img + img) { grid-template-columns: 1fr 1fr; }
+.review-item .pair img { aspect-ratio: 63/88; object-fit: cover; border-radius: 8px; width: 100%; }
+.review-item .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .review-item .name { font-family: var(--font-display); font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .review-item .btn { min-height: 38px; padding: 6px 12px; font-size: 0.9rem; }
 
