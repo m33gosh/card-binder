@@ -95,7 +95,7 @@ export function CollectionPage() {
       {cards.length === 0 ? (
         <div className="empty">
           <img className="binder-art" src={`${import.meta.env.BASE_URL}icons/icon.svg`} alt="" />
-          <h2>The binder is empty</h2>
+          <h2>Your binder is empty</h2>
           <p className="muted">Take a photo of a page and the cards go in.</p>
           {can(role, 'card:create') && <Link to="/add" className="btn primary big">Add cards</Link>}
         </div>

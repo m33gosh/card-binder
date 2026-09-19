@@ -16,11 +16,14 @@ wrapped as an iPad app later.
 | Prices | [pokemontcg.io](https://pokemontcg.io) (TCGplayer market prices) | Free, current (sets from this month are in it), works straight from the browser. |
 | iPad | Capacitor | Wraps the same web build into a native iOS app. |
 
-Roles: **pending** (signed in, sees nothing), **viewer**, **editor** (adds and
-edits their own cards, updates prices), **admin** (everything, plus the People
-page). The first account to sign in becomes admin. Every rule lives in
-`supabase/migrations/0001_init.sql` as a row-security policy; the app only
-mirrors them in `src/auth/permissions.ts` to hide buttons.
+Every signed-in person has their own private binder; nobody, admins included,
+can see anyone else's cards or photos. Roles: **pending** (signed in, no
+access yet), **viewer** (can sign in), **editor** (fills and manages their own
+binder), **admin** (also approves people on the People page). The first
+account to sign in becomes admin. Every rule lives in `supabase/migrations/`
+as a row-security policy (`0001` sets up the schema, `0002` makes binders
+private); the app only mirrors them in `src/auth/permissions.ts` to hide
+buttons.
 
 ## Setting it up
 

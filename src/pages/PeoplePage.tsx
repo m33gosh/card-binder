@@ -31,7 +31,7 @@ export function PeoplePage() {
     <div className="stack">
       <div>
         <h1>People</h1>
-        <p className="muted">Anyone with a Google account can sign in, but they see nothing until you let them in here.{pending > 0 && ` ${pending} waiting.`}</p>
+        <p className="muted">Anyone with a Google account can sign in, but they get a binder only once you let them in here. Each person's binder is their own.{pending > 0 && ` ${pending} waiting.`}</p>
       </div>
       <div className="people">
         {people.map((p) => (
@@ -48,7 +48,7 @@ export function PeoplePage() {
         ))}
       </div>
       <div className="panel small muted">
-        <p><strong>Can look</strong> browses the binder. <strong>Can add cards</strong> also adds, edits and removes the cards they added and updates prices. <strong>Runs the binder</strong> can do anything, including this page.</p>
+        <p><strong>Can look</strong> can sign in and see their own (empty) binder. <strong>Can add cards</strong> fills and manages their own binder. <strong>Runs the app</strong> can also approve people here. Nobody can see anyone else's cards.</p>
         <p style={{ margin: 0 }}>The same rules are enforced by the database, not just hidden in the app.</p>
       </div>
     </div>

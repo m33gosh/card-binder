@@ -10,7 +10,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   pending: 'Waiting for approval',
   viewer: 'Can look',
   editor: 'Can add cards',
-  admin: 'Runs the binder',
+  admin: 'Runs the app',
 }
 
 export type Action =
@@ -37,8 +37,7 @@ export function can(role: Role | null | undefined, action: Action): boolean {
   return RANK[role] >= RANK[MIN_ROLE[action]]
 }
 
-/** Editors may only touch their own cards; admins may touch anything. */
+/** Every binder is private: only its owner can change it, admins included. */
 export function canEditCard(role: Role | null | undefined, userId: string | undefined, ownerId: string): boolean {
-  if (role === 'admin') return true
   return can(role, 'card:edit') && userId === ownerId
 }

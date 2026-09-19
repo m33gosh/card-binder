@@ -20,7 +20,8 @@ describe('canEditCard', () => {
     expect(canEditCard('editor', 'u1', 'u1')).toBe(true)
     expect(canEditCard('editor', 'u1', 'u2')).toBe(false)
   })
-  it('admins edit anything', () => {
-    expect(canEditCard('admin', 'u1', 'u2')).toBe(true)
+  it('admins edit only their own binder too', () => {
+    expect(canEditCard('admin', 'u1', 'u2')).toBe(false)
+    expect(canEditCard('admin', 'u1', 'u1')).toBe(true)
   })
 })
