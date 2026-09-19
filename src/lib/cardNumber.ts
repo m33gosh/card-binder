@@ -67,23 +67,34 @@ export function candidateSets(ref: CardRef, sets: SetInfo[]): SetInfo[] {
   return []
 }
 
-const KIND_WORDS = /\b(BASIC|STAGE\s*[12]?|ITEM|TRAINER|SUPPORTER|STADIUM|POK[ÉE]MON\s+TOOL|TOOL|SPECIAL|ENERGY\s+CARD|EVOLVES\s+FROM.*|HP\s*\d*.*)\b/gi
+const KIND_WORDS = /\b(BASIC|STAGE\s*[12Z]?|ITEM|TRAINER|SUPPORTER|STADIUM|POK[ÉE]MON\s+TOOL|TOOL|SPECIAL|ENERGY\s+CARD)\b/gi
+// fragments of the copyright line and other things that are never a name
+const NOISE = /^(pokemon|pokémon|nintendo|creatures|game|freak|illus|inc|ability|weakness|resistance|retreat|the|this|your|and|from|with|card|cards|attack|damage|effect|turn)$/i
+const SUFFIX = /^(ex|EX|V|GX|VMAX|VSTAR|LV\.?X)$/
 
-/**
- * The card's name from the text read off its top band. The name band reads
- * like "STAGE 1 Houndoom Evolves from Houndour HP 130" so keep what's left
- * after the kind words, and stop at HP or "Evolves from".
- */
-export function parseCardName(text: string): string | null {
-  const head = text.split(/\bHP\b|\bEvolves\b/i)[0] ?? ''
-  const cleaned = head
+const words = (text: string) =>
+  text
     .replace(KIND_WORDS, ' ')
     .replace(/[^A-Za-z0-9'’.\-&é ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  // OCR noise tends to be short fragments; a real name is a word of 3+ letters
-  const words = cleaned.split(' ').filter((w) => /[A-Za-zé]{3,}/.test(w) || /^(ex|V|GX|EX|VMAX|VSTAR)$/i.test(w))
-  if (words.length === 0) return null
-  const name = words.slice(0, 4).join(' ')
+    .split(/\s+/)
+    .filter((w) => (/[A-Za-zé]{3,}/.test(w) || SUFFIX.test(w)) && !NOISE.test(w) && !/\d{4}/.test(w))
+
+/**
+ * The card's name from text read off the card. On a Pokémon the name sits
+ * right before "HP", so take the few words before the first HP; otherwise
+ * (trainers, energies) the first real words after the kind label.
+ */
+export function parseCardName(text: string): string | null {
+  const hp = /\bHP\b/i.exec(text)
+  let picked: string[]
+  if (hp) {
+    const before = text.slice(0, hp.index).split(/\bEvolves\b/i)[0]
+    picked = words(before).slice(-4)
+    // a name doesn't start with a suffix; drop leading fragments like "ex" or "V"
+    while (picked.length && SUFFIX.test(picked[0])) picked.shift()
+  } else {
+    picked = words(text.split(/\bEvolves\b/i)[0]).slice(0, 4)
+  }
+  const name = picked.join(' ').trim()
   return name.length >= 3 ? name : null
 }

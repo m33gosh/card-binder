@@ -49,6 +49,12 @@ describe('parseCardName', () => {
     expect(parseCardName('BASIC Mega Lucario ex HP 340 ~ weakness')).toBe('Mega Lucario ex')
     expect(parseCardName('Item TRAINER Antique Armor Fossil HP 60')).toBe('Antique Armor Fossil')
   })
+  it('skips copyright noise read before the name', () => {
+    expect(parseCardName('26 Pol /Nintendo /Creatures/GAME FREAK STAGEZ Mega Delphox ex HP 350 Trick Portal')).toBe('Mega Delphox ex')
+  })
+  it('handles trainers without HP', () => {
+    expect(parseCardName('Item TRAINER Nest Ball Search your deck for a Basic Pokémon')).toBe('Nest Ball Search')
+  })
   it('ignores noise-only text', () => {
     expect(parseCardName('~ 7 || ..')).toBeNull()
   })

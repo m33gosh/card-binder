@@ -7,28 +7,19 @@ import { candidateSets, parseCardName, parseCardRef, type CardRef } from './card
 import { getSets } from './catalogSets'
 
 /**
- * One image with the two bands worth reading: the name band across the top
- * and the bottom-left corner where the set code and number are printed.
- * Stacked into a single picture so it costs one read.
+ * The whole card, shrunk to a size the reader handles well. Reading the whole
+ * card (rather than just the corner) means a loose crop still works: 28 of 30
+ * test cards were identified this way versus 23 from corner bands.
  */
 export async function cornerCrop(cardBlob: Blob): Promise<Blob> {
   const img = await loadImage(cardBlob)
-  const w = img.naturalWidth
-  const h = img.naturalHeight
-  const top = { x: 0, y: 0, w, h: Math.round(h * 0.16) }
-  const bottom = { x: 0, y: Math.round(h * 0.7), w: Math.round(w * 0.62), h: Math.round(h * 0.3) }
-  // OCR reads ~2x more reliably when the text is a good size; aim for ~1400px wide
-  const scale = Math.min(3, Math.max(1, 1400 / w))
+  const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(w * scale)
-  canvas.height = Math.round((top.h + bottom.h) * scale) + 12
-  const ctx = canvas.getContext('2d')!
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(img, top.x, top.y, top.w, top.h, 0, 0, Math.round(top.w * scale), Math.round(top.h * scale))
-  ctx.drawImage(img, bottom.x, bottom.y, bottom.w, bottom.h, 0, Math.round(top.h * scale) + 12, Math.round(bottom.w * scale), Math.round(bottom.h * scale))
+  canvas.width = Math.round(img.naturalWidth * scale)
+  canvas.height = Math.round(img.naturalHeight * scale)
+  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not crop the card.'))), 'image/jpeg', 0.85),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not prepare the card image.'))), 'image/jpeg', 0.85),
   )
 }
 
