@@ -108,7 +108,7 @@ export const tcgdexSource: PricingSource = {
     const q = name.trim()
     if (!q) return []
     const data = await graphql<{ cards: BriefCard[] | null }>(
-      `query ($name: String, $page: Int, $size: Int) {
+      `query ($name: String, $page: Int!, $size: Int!) {
         cards(filters: { name: $name }, pagination: { page: $page, itemsPerPage: $size }) {
           id name localId rarity image set { id name }
         }
