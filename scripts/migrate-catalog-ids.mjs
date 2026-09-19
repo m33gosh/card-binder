@@ -12,9 +12,11 @@ const s = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVI
 const REST = 'https://api.tcgdex.net/v2/en'
 const get = async (p) => { const r = await fetch(REST + p); return r.status === 404 ? null : r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${p}`)) }
 const strip = (n) => String(n).replace(/^0+(?=\d)/, '').toUpperCase()
+// "Basic Fire Energy" and "Fire Energy" are the same card
+const norm = (n) => n.toLowerCase().replace(/^basic\s+/, '').replace(/[^a-z0-9]/g, '')
 const damage = (d) => { const m = /\d+/.exec(d == null ? '' : String(d)); return m ? Number(m[0]) : 0 }
 // pokemontcg set names that TCGdex spells differently
-const NAME_ALIASES = { 'Scarlet & Violet Black Star Promos': 'SV Black Star Promos', 'SWSH Black Star Promos': 'SWSH Black Star Promos', 'SM Black Star Promos': 'SM Black Star Promos', 'Scarlet & Violet Energies': 'Scarlet & Violet Energies' }
+const NAME_ALIASES = { 'Scarlet & Violet Energies': 'Scarlet & Violet Energy', 'Scarlet & Violet Black Star Promos': 'SV Black Star Promos' }
 
 const sets = await get('/sets')
 const byName = new Map(sets.map((x) => [x.name.toLowerCase(), x]))
@@ -33,8 +35,8 @@ for (const row of rows) {
     const setName = NAME_ALIASES[row.set_name] ?? row.set_name
     const set = byName.get((setName ?? '').toLowerCase()) ?? sets.find((x) => x.name.toLowerCase().includes((setName ?? '').toLowerCase()))
     const hit = set ? (await cardsOf(set.id)).find((c) => strip(c.localId) === strip(row.card_number ?? '')) : null
-    if (hit && hit.name.toLowerCase().replace(/[^a-z0-9]/g, '') !== row.name.toLowerCase().replace(/[^a-z0-9]/g, '')) console.log(`  ! ${row.name} → ${hit.name} (${hit.id}) name differs, skipping`)
-    card = hit && hit.name.toLowerCase().replace(/[^a-z0-9]/g, '') === row.name.toLowerCase().replace(/[^a-z0-9]/g, '') ? await get(`/cards/${encodeURIComponent(hit.id)}`) : null
+    if (hit && norm(hit.name) !== norm(row.name)) console.log(`  ! ${row.name} → ${hit.name} (${hit.id}) name differs, skipping`)
+    card = hit && norm(hit.name) === norm(row.name) ? await get(`/cards/${encodeURIComponent(hit.id)}`) : null
   }
   if (!card) { failed++; console.log(`  ? ${row.name} (${row.set_name} #${row.card_number}) not found in TCGdex`); continue }
   const tcg = card.pricing?.tcgplayer ?? {}
@@ -56,7 +58,12 @@ for (const row of rows) {
   if (!dry) {
     const { error: uErr } = await s.from('cards').update(patch).eq('id', row.id)
     if (uErr) throw uErr
-    if (pick) await s.from('price_history').insert({ card_id: row.id, price: pick[1], currency: 'USD', source: 'TCGplayer via TCGdex' })
+    if (pick) {
+      // one history point per card per day is plenty
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+      const { data: recent } = await s.from('price_history').select('id').eq('card_id', row.id).eq('price', pick[1]).gte('recorded_at', since).limit(1)
+      if (!recent?.length) await s.from('price_history').insert({ card_id: row.id, price: pick[1], currency: 'USD', source: 'TCGplayer via TCGdex' })
+    }
   }
   existing ? kept++ : moved++
   process.stdout.write(`\r${moved + kept + failed}/${rows.length} ${row.name.padEnd(26)} ${row.api_card_id} → ${card.id} ${pick ? '$' + pick[1] : 'no price'}      `)
