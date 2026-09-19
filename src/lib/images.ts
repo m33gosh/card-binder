@@ -6,16 +6,32 @@ export const CARD_ASPECT = 63 / 88 // width / height of a Pokémon card
 const MAX_EDGE = 1600
 const JPEG_QUALITY = 0.86
 
-function isHeic(file: File): boolean {
+function looksHeic(file: File): boolean {
   return /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)
+}
+
+/** ISO media "ftyp" box with a HEIF brand in the first 12 bytes. */
+async function hasHeicSignature(file: File): Promise<boolean> {
+  if (file.size < 12) return false
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const ascii = String.fromCharCode(...head.subarray(4, 12))
+  return ascii.startsWith('ftyp') && /heic|heix|hevc|hevx|heim|heis|mif1|msf1/.test(ascii.slice(4))
 }
 
 /** Returns a Blob the browser can decode (HEIC → JPEG when needed). */
 export async function toDecodableBlob(file: File): Promise<Blob> {
-  if (!isHeic(file)) return file
-  const { default: heic2any } = await import('heic2any')
-  const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
-  return Array.isArray(out) ? out[0] : out
+  // iPad Safari usually hands us a JPEG already; desktop browsers and some
+  // "Files" pickers pass the raw HEIC through. Check the bytes, not just the
+  // name, so a mislabelled file still converts.
+  if (!looksHeic(file) && !(await hasHeicSignature(file))) return file
+  // the decoder is ~750 KB compressed, so it only loads when a HEIC shows up
+  const { heicTo } = await import('heic-to')
+  try {
+    return await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 })
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
+    throw new Error(`This HEIC photo couldn't be converted${detail ? ` (${detail})` : ''}. Try exporting it as JPEG from Photos and adding that.`)
+  }
 }
 
 export async function loadImage(blob: Blob): Promise<HTMLImageElement> {

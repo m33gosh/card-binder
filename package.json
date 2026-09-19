@@ -14,7 +14,7 @@
     "@capacitor/camera": "^8.2.4",
     "@capacitor/core": "^8.5.2",
     "@supabase/supabase-js": "^2.116.0",
-    "heic2any": "^0.0.4",
+    "heic-to": "^1.5.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"
