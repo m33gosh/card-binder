@@ -3,7 +3,7 @@
 import { supabase } from './supabase'
 import { pricing, type CatalogCard } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, parseCardName, parseCardRef, type CardRef } from './cardNumber'
+import { candidateSets, nameCandidates, parseCardName, parseCardRef, type CardRef } from './cardNumber'
 import { getSets } from './catalogSets'
 
 /**
@@ -68,12 +68,17 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   const name = parseCardName(text)
   // exact: set + number
   let candidates = ref ? await lookupRef(ref) : []
-  // otherwise the name, narrowed by the printed total when we have one
+  // otherwise the name: try the guesses longest-first until the catalog answers,
+  // narrowed by the printed total when we have one
   if (candidates.length === 0 && name) {
-    const byName = await pricing.search({ name })
-    const total = ref?.total
-    const narrowed = total ? byName.filter((c) => String(setSize(c, sets)) === total) : byName
-    candidates = (narrowed.length ? narrowed : byName).slice(0, 5)
+    for (const guess of nameCandidates(text).slice(0, 4)) {
+      const byName = await pricing.search({ name: guess })
+      if (byName.length === 0) continue
+      const total = ref?.total
+      const narrowed = total ? byName.filter((c) => String(setSize(c, sets)) === total) : byName
+      candidates = (narrowed.length ? narrowed : byName).slice(0, 5)
+      break
+    }
   }
   return { ref, name, text, candidates }
 }

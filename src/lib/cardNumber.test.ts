@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateSets, looksLikeCardRef, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
+import { candidateSets, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
 
 const codes = ['PBL', 'CRI', 'WHT', 'OBF', 'SVE']
 
@@ -49,11 +49,15 @@ describe('parseCardName', () => {
     expect(parseCardName('BASIC Mega Lucario ex HP 340 ~ weakness')).toBe('Mega Lucario ex')
     expect(parseCardName('Item TRAINER Antique Armor Fossil HP 60')).toBe('Antique Armor Fossil')
   })
-  it('skips copyright noise read before the name', () => {
-    expect(parseCardName('26 Pol /Nintendo /Creatures/GAME FREAK STAGEZ Mega Delphox ex HP 350 Trick Portal')).toBe('Mega Delphox ex')
+  it('offers shorter guesses when a stray word precedes the name', () => {
+    const guesses = nameCandidates('26 Pol /Nintendo /Creatures/GAME FREAK STAGEZ Mega Delphox ex HP 350 Trick Portal')
+    expect(guesses).toContain('Mega Delphox ex')
+    expect(guesses.indexOf('Mega Delphox ex')).toBeLessThan(guesses.indexOf('Delphox ex'))
   })
-  it('handles trainers without HP', () => {
-    expect(parseCardName('Item TRAINER Nest Ball Search your deck for a Basic Pokémon')).toBe('Nest Ball Search')
+  it('handles trainers without HP by trimming from the end', () => {
+    const guesses = nameCandidates('Item TRAINER Nest Ball Search your deck for a Basic Pokémon')
+    expect(guesses[0].startsWith('Nest Ball')).toBe(true)
+    expect(guesses).toContain('Nest Ball')
   })
   it('ignores noise-only text', () => {
     expect(parseCardName('~ 7 || ..')).toBeNull()

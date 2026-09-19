@@ -80,21 +80,26 @@ const words = (text: string) =>
     .filter((w) => (/[A-Za-zé]{3,}/.test(w) || SUFFIX.test(w)) && !NOISE.test(w) && !/\d{4}/.test(w))
 
 /**
- * The card's name from text read off the card. On a Pokémon the name sits
- * right before "HP", so take the few words before the first HP; otherwise
- * (trainers, energies) the first real words after the kind label.
+ * Guesses at the card's name, longest first. On a Pokémon the name sits right
+ * before "HP", but the reader often tacks a stray word on the front, so the
+ * guesses drop words from the front. Trainers and energies have no HP: take
+ * the first words after the kind label and drop words from the end.
  */
-export function parseCardName(text: string): string | null {
+export function nameCandidates(text: string): string[] {
   const hp = /\bHP\b/i.exec(text)
-  let picked: string[]
+  const out: string[] = []
   if (hp) {
-    const before = text.slice(0, hp.index).split(/\bEvolves\b/i)[0]
-    picked = words(before).slice(-4)
-    // a name doesn't start with a suffix; drop leading fragments like "ex" or "V"
+    const picked = words(text.slice(0, hp.index).split(/\bEvolves\b/i)[0]).slice(-4)
     while (picked.length && SUFFIX.test(picked[0])) picked.shift()
+    for (let i = 0; i < picked.length; i++) out.push(picked.slice(i).join(' '))
   } else {
-    picked = words(text.split(/\bEvolves\b/i)[0]).slice(0, 4)
+    const picked = words(text.split(/\bEvolves\b/i)[0]).slice(0, 4)
+    for (let n = picked.length; n > 0; n--) out.push(picked.slice(0, n).join(' '))
   }
-  const name = picked.join(' ').trim()
-  return name.length >= 3 ? name : null
+  return out.filter((n) => n.length >= 3)
+}
+
+/** Best single guess at the name, for showing to a person. */
+export function parseCardName(text: string): string | null {
+  return nameCandidates(text)[0] ?? null
 }
