@@ -119,6 +119,11 @@ async function rankPrints(text: string, ref: CardRef | null, prints: CatalogCard
       const surname = simplify(card.illustrator).split(' ').filter((w) => w.length >= 3).at(-1)
       if (surname && t.includes(' ' + surname + ' ')) score += 2
     }
+    // attack names tell same-name prints apart (Chaos Rising has four Deoxys)
+    for (const attack of card.attackNames ?? []) {
+      const key = simplify(attack).split(' ').filter((w) => w.length >= 4)[0]
+      if (key && textHasWord(text, key)) score += 2
+    }
     return { card, score, i }
   })
   scored.sort((a, b) => b.score - a.score || a.i - b.i)
@@ -126,6 +131,31 @@ async function rankPrints(text: string, ref: CardRef | null, prints: CatalogCard
 }
 
 const simplify = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+
+/** Edit distance, for forgiving a misread letter or two in a name. */
+export function editDistance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0]
+    prev[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j]
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diag = tmp
+    }
+  }
+  return prev[b.length]
+}
+
+/** "philippe" ≈ "phillippe": one slip per ~5 letters, only for longer words. */
+export function closeEnough(a: string, b: string): boolean {
+  if (a === b) return true
+  const n = Math.max(a.length, b.length)
+  if (n < 6) return false
+  return editDistance(a, b) <= (n >= 10 ? 2 : 1)
+}
+
+const textHasWord = (text: string, word: string) => simplify(text).split(' ').some((w) => closeEnough(w, word))
 
 /**
  * Does a catalog card's name genuinely match a guess read off a photo?
@@ -136,8 +166,13 @@ export function nameFits(cardName: string, guess: string): boolean {
   const a = simplify(cardName)
   const g = simplify(guess)
   if (!g) return false
-  if (!g.includes(' ')) return a === g || a.split(' ')[0] === g && g.length >= 5 && /^(ex|v|gx|vmax|vstar)$/.test(a.split(' ')[1] ?? '')
-  return (' ' + a + ' ').includes(' ' + g + ' ')
+  if (!g.includes(' ')) return closeEnough(a, g) || (closeEnough(a.split(' ')[0], g) && g.length >= 5 && /^(ex|v|gx|vmax|vstar)$/.test(a.split(' ')[1] ?? ''))
+  if ((' ' + a + ' ').includes(' ' + g + ' ')) return true
+  // multi-word guess with a slip in one word
+  const gw = g.split(' ')
+  const aw = a.split(' ')
+  for (let i = 0; i + gw.length <= aw.length; i++) if (gw.every((w, k) => closeEnough(w, aw[i + k]))) return true
+  return false
 }
 
 /** Is this card's name somewhere in the text read off the photo? */
@@ -145,7 +180,7 @@ export function appearsInText(text: string, cardName: string): boolean {
   const t = ' ' + simplify(text) + ' '
   const words = simplify(cardName).split(' ').filter((w) => w.length >= 4 && !/^(mega|alolan|galarian|hisuian|paldean|basic|energy)$/.test(w))
   const key = words[0] ?? simplify(cardName).split(' ')[0]
-  return key.length >= 3 && t.includes(' ' + key + ' ')
+  return key.length >= 3 && (t.includes(' ' + key + ' ') || textHasWord(text, key))
 }
 
 function setSize(card: CatalogCard, sets: Awaited<ReturnType<typeof getSets>>): number | undefined {

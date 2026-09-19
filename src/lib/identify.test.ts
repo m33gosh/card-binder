@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appearsInText, nameFits } from './identify'
+import { appearsInText, closeEnough, nameFits } from './identify'
 
 describe('nameFits', () => {
   it('needs a whole-name match for a single word', () => {
@@ -25,5 +25,18 @@ describe('appearsInText', () => {
   it('rejects a card whose name was not read', () => {
     expect(appearsInText('STAGE 1 Houndoom HP 130 Daring Strike', 'Emolga')).toBe(false)
     expect(appearsInText('BASIC Mega Lucario ex HP 340', 'Mega Delphox ex')).toBe(false)
+  })
+})
+
+describe('closeEnough', () => {
+  it('forgives a misread letter in longer words only', () => {
+    expect(closeEnough('philippe', 'phillippe')).toBe(true)
+    expect(closeEnough('houndoom', 'houndour')).toBe(false)
+    expect(closeEnough('mew', 'mow')).toBe(false)
+  })
+  it('lets a misread name still count', () => {
+    expect(appearsInText('Supporter Phillippe Draw 3 cards', 'Philippe')).toBe(true)
+    expect(nameFits('Philippe', 'Phillippe')).toBe(true)
+    expect(nameFits('Air Balloon', 'Phillippe')).toBe(false)
   })
 })

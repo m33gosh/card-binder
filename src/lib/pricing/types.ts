@@ -30,6 +30,7 @@ export interface CatalogCard {
   types?: string[]
   hp?: number
   illustrator?: string
+  attackNames?: string[]
   /** printed damage of each attack, already parsed ("30+" → 30) */
   attackDamage?: number[]
   /** market price per variant, in USD, when the source knows it */
