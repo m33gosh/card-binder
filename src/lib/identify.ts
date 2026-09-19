@@ -3,7 +3,7 @@
 import { supabase } from './supabase'
 import { pricing, type CatalogCard } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, nameCandidates, parseCardName, parseCardRef, type CardRef } from './cardNumber'
+import { candidateSets, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
 import { getSets } from './catalogSets'
 
 /**
@@ -61,32 +61,68 @@ export async function lookupRef(ref: CardRef): Promise<CatalogCard[]> {
 }
 
 export async function identifyCard(cardBlob: Blob): Promise<Identification> {
+  const text = await readCornerText(await cornerCrop(cardBlob))
+  return identifyFromText(text)
+}
+
+/** Everything after the read: pure text handling plus catalog lookups. */
+export async function identifyFromText(text: string): Promise<Identification> {
   const sets = await getSets()
   const codes = sets.map((s) => s.ptcgoCode).filter((c): c is string => Boolean(c))
-  const text = await readCornerText(await cornerCrop(cardBlob))
   const ref = parseCardRef(text, codes)
-  const name = parseCardName(text)
-  // exact: set + number. Several sets share a size, so when the set code wasn't
-  // read the number alone can land on the wrong set; check the name we read.
+  const guesses = nameCandidates(text)
+  const name = guesses[0] ?? null
+  // did the reader get any real word off the card? then a match must agree with it
+  const readableName = guesses.some((g) => /[A-Za-zé]{5,}/.test(g))
+
+  // exact: set + number, but the number alone can land on the wrong card
+  // (misread digit, or a set of the same size), so the name we read must agree
   let candidates = ref ? await lookupRef(ref) : []
   if (candidates.length > 0) {
     const confirmed = candidates.filter((c) => appearsInText(text, c.name))
-    if (confirmed.length) candidates = confirmed
-    else if (/\bHP\b/i.test(text) && ref && !ref.code) candidates = [] // name band was readable but doesn't match: don't guess
+    candidates = confirmed.length ? confirmed : readableName ? [] : candidates
   }
+
   // otherwise the name: try the guesses longest-first until the catalog answers,
-  // narrowed by the printed total when we have one
+  // then pick the print that best fits what else was read (illustrator, HP, number)
   if (candidates.length === 0 && name) {
-    for (const guess of nameCandidates(text).slice(0, 4)) {
+    for (const guess of guesses.slice(0, 4)) {
       const byName = (await pricing.search({ name: guess })).filter((c) => nameFits(c.name, guess))
       if (byName.length === 0) continue
       const total = ref?.total
       const narrowed = total ? byName.filter((c) => String(setSize(c, sets)) === total) : byName
-      candidates = (narrowed.length ? narrowed : byName).slice(0, 5)
+      candidates = await rankPrints(text, ref, (narrowed.length ? narrowed : byName).slice(0, 6))
       break
     }
   }
   return { ref, name, text, candidates }
+}
+
+const readHp = (text: string) => /\bHP\s*(\d{2,3})\b/i.exec(text)?.[1]
+const readIllustrator = (text: string) => /\bIllus\.?\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'\-]+(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'\-]+){0,2})/.exec(text)?.[1]
+
+/**
+ * Several prints share a name. Fetch each candidate's details and score how
+ * well it fits the other things read off the card. Ties stay newest-first.
+ */
+async function rankPrints(text: string, ref: CardRef | null, prints: CatalogCard[]): Promise<CatalogCard[]> {
+  if (prints.length <= 1) return prints
+  const hp = readHp(text)
+  const illus = readIllustrator(text)
+  const t = ' ' + simplify(text) + ' '
+  const detailed = await Promise.all(prints.map(async (p) => (await pricing.getCard(p.id).catch(() => null)) ?? p))
+  const scored = detailed.map((card, i) => {
+    let score = 0
+    if (ref && card.number.toUpperCase() === ref.number.toUpperCase()) score += 3
+    if (hp && card.hp != null && String(card.hp) === hp) score += 1
+    if (illus && card.illustrator) {
+      const surname = simplify(card.illustrator).split(' ').filter((w) => w.length >= 3).at(-1)
+      if (surname && t.includes(' ' + surname + ' ')) score += 2
+    }
+    return { card, score, i }
+  })
+  scored.sort((a, b) => b.score - a.score || a.i - b.i)
+  return scored.map((s) => s.card)
 }
 
 const simplify = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()

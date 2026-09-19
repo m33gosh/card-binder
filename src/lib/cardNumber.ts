@@ -18,7 +18,9 @@ const strip = (n: string) => n.replace(/^0+(?=\d)/, '')
 
 export function parseCardRef(text: string, knownCodes: string[] = []): CardRef | null {
   const t = text.toUpperCase().replace(/[O]\s*\//g, '0/').replace(/\/\s*[O]/g, '/0')
-  const codeRe = knownCodes.length ? new RegExp(`\\b(${knownCodes.map((c) => c.replace(/[-]/g, '\\-')).join('|')})\\b`) : null
+  // two-letter codes (HP, AR, …) collide with ordinary words; only trust 3+
+  const usable = knownCodes.filter((c) => c.length >= 3)
+  const codeRe = usable.length ? new RegExp(`\\b(${usable.map((c) => c.replace(/[-]/g, '\\-')).join('|')})\\b`) : null
   const code = codeRe?.exec(t)?.[1]
 
   const fraction = /(\d{1,3})\s*\/\s*(\d{2,3})/.exec(t)
@@ -60,7 +62,9 @@ export function candidateSets(ref: CardRef, sets: SetInfo[]): SetInfo[] {
     const byCode = sorted.filter((s) => s.ptcgoCode === ref.code)
     if (byCode.length) {
       const byTotal = ref.total ? byCode.filter((s) => String(s.printedTotal) === ref.total) : []
-      return byTotal.length ? byTotal : byCode
+      if (byTotal.length) return byTotal
+      // the code's sets don't have this many cards: the code was a misread, trust the total
+      if (!ref.total) return byCode
     }
   }
   if (ref.total) return sorted.filter((s) => String(s.printedTotal) === ref.total)

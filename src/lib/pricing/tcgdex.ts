@@ -15,6 +15,7 @@ interface RestCard {
   name: string
   rarity?: string
   image?: string
+  illustrator?: string
   category?: 'Pokemon' | 'Trainer' | 'Energy' | string
   types?: string[]
   hp?: number
@@ -79,6 +80,7 @@ export function toCatalogCard(card: RestCard): CatalogCard {
     supertype: supertype(card.category),
     types: card.types,
     hp: typeof card.hp === 'number' ? card.hp : undefined,
+    illustrator: card.illustrator,
     attackDamage: card.attacks?.map((a) => parseDamage(a.damage == null ? '' : String(a.damage))),
     prices,
     priceUpdatedAt: tcg.updated,

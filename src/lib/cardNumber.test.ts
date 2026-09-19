@@ -41,6 +41,12 @@ describe('candidateSets', () => {
   it('returns nothing without a code or total', () => {
     expect(candidateSets({ number: '7' }, sets)).toEqual([])
   })
+  it('drops a code that contradicts the printed total', () => {
+    expect(candidateSets({ number: '61', total: '86', code: 'PBL' }, sets).map((s) => s.id)).toEqual(['me4', 'rsv10pt5'])
+  })
+  it('ignores two-letter codes when parsing', () => {
+    expect(parseCardRef('Corviknight V HP 210 109/163', ['HP', 'BST'])).toEqual({ number: '109', total: '163', code: undefined })
+  })
 })
 
 describe('parseCardName', () => {
