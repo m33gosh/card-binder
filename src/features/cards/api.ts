@@ -1,5 +1,5 @@
 import { CARD_IMAGES_BUCKET, supabase } from '@/lib/supabase'
-import { pickPrice, pricing, type CatalogCard } from '@/lib/pricing'
+import { pickPrice, pricing, totalAttackPower, type CatalogCard } from '@/lib/pricing'
 import type { CardInsert, CardRow, CardUpdate, PricePoint } from './types'
 
 const SIGNED_URL_TTL = 60 * 60 // seconds
@@ -102,10 +102,20 @@ export function fieldsFromCatalog(match: CatalogCard, variant: CardRow['variant'
     rarity: match.rarity ?? null,
     api_card_id: match.id,
     api_image_url: match.images.large,
+    ...statsFromCatalog(match),
     market_price: quote?.price ?? null,
     price_currency: quote?.currency ?? 'USD',
     price_source: quote ? quote.source : null,
     price_updated_at: quote ? new Date().toISOString() : null,
+  }
+}
+
+export function statsFromCatalog(match: CatalogCard): Pick<CardUpdate, 'supertype' | 'types' | 'hp' | 'attack_power'> {
+  return {
+    supertype: match.supertype ?? null,
+    types: match.types ?? null,
+    hp: match.hp ?? null,
+    attack_power: match.attackDamage ? totalAttackPower(match) : null,
   }
 }
 
@@ -132,6 +142,7 @@ export async function refreshPrices(
           price_source: quote.source,
           price_updated_at: new Date().toISOString(),
           api_image_url: match?.images.large ?? card.api_image_url,
+          ...(match ? statsFromCatalog(match) : {}),
         })
         await recordPrice(row)
         updated++

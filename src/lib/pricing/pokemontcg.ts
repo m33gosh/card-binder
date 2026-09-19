@@ -1,4 +1,4 @@
-import type { CatalogCard, CatalogSet, PricingSource, Variant } from './types'
+import { parseDamage, type CatalogCard, type CatalogSet, type PricingSource, type Variant } from './types'
 
 // https://docs.pokemontcg.io — free, CORS-friendly, TCGplayer market prices.
 // Without a key you get 1,000 requests/day, plenty for a family binder.
@@ -13,6 +13,10 @@ interface ApiCard {
   rarity?: string
   set: { id: string; name: string; series: string; printedTotal: number; releaseDate: string }
   images: { small: string; large: string }
+  supertype?: string
+  types?: string[]
+  hp?: string
+  attacks?: Array<{ name: string; damage?: string }>
   tcgplayer?: { url?: string; updatedAt?: string; prices?: Partial<Record<Variant, ApiPriceBlock>> }
   cardmarket?: { url?: string; updatedAt?: string; prices?: { averageSellPrice?: number; trendPrice?: number } }
 }
@@ -53,6 +57,10 @@ export function toCatalogCard(card: ApiCard): CatalogCard {
       releaseDate: card.set.releaseDate,
     },
     images: card.images,
+    supertype: card.supertype,
+    types: card.types,
+    hp: card.hp && /^\d+$/.test(card.hp) ? Number(card.hp) : undefined,
+    attackDamage: card.attacks?.map((a) => parseDamage(a.damage)),
     prices,
     priceUpdatedAt: card.tcgplayer?.updatedAt,
     sourceUrl: card.tcgplayer?.url,
@@ -88,14 +96,14 @@ export const pokemonTcgSource: PricingSource = {
       page,
       pageSize: 24,
       orderBy: '-set.releaseDate',
-      select: 'id,name,number,rarity,set,images,tcgplayer',
+      select: 'id,name,number,rarity,set,images,supertype,types,hp,attacks,tcgplayer',
     })
     return (body.data ?? []).map(toCatalogCard)
   },
 
   async getCard(id) {
     const body = await request<{ data: ApiCard | null }>(`/cards/${encodeURIComponent(id)}`, {
-      select: 'id,name,number,rarity,set,images,tcgplayer',
+      select: 'id,name,number,rarity,set,images,supertype,types,hp,attacks,tcgplayer',
     })
     return body.data ? toCatalogCard(body.data) : null
   },
@@ -116,7 +124,7 @@ export const pokemonTcgSource: PricingSource = {
       q: `number:${number.trim()} (${sets})`,
       pageSize: 24,
       orderBy: '-set.releaseDate',
-      select: 'id,name,number,rarity,set,images,tcgplayer',
+      select: 'id,name,number,rarity,set,images,supertype,types,hp,attacks,tcgplayer',
     })
     return (body.data ?? []).map(toCatalogCard)
   },

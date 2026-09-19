@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickPrice, type CatalogCard } from './types'
+import { parseDamage, pickPrice, totalAttackPower, type CatalogCard } from './types'
 import { buildQuery } from './pokemontcg'
 
 const card: CatalogCard = {
@@ -39,5 +39,15 @@ describe('buildQuery', () => {
   })
   it('adds set and number filters', () => {
     expect(buildQuery({ name: 'pikachu', setId: 'sv8', number: '57' })).toBe('name:"pikachu*" set.id:sv8 number:57')
+  })
+})
+
+describe('attack power', () => {
+  it('reads printed damage in all its forms', () => {
+    expect(['130', '30+', '60×', '20-', '', undefined].map(parseDamage)).toEqual([130, 30, 60, 20, 0, 0])
+  })
+  it('adds up the attacks', () => {
+    expect(totalAttackPower({ attackDamage: [130, 270] })).toBe(400)
+    expect(totalAttackPower({})).toBe(0)
   })
 })

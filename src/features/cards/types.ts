@@ -30,6 +30,10 @@ export interface CardRow {
   price_source: string | null
   price_updated_at: string | null
   notes: string | null
+  supertype: string | null
+  types: string[] | null
+  hp: number | null
+  attack_power: number | null
   created_at: string
   updated_at: string
 }

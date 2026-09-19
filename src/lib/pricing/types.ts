@@ -25,6 +25,12 @@ export interface CatalogCard {
   rarity?: string
   set: { id: string; name: string; series?: string; printedTotal?: number; releaseDate?: string }
   images: { small: string; large: string }
+  supertype?: 'Pokémon' | 'Trainer' | 'Energy' | string
+  /** energy types, e.g. ["Fire"]; Pokémon only */
+  types?: string[]
+  hp?: number
+  /** printed damage of each attack, already parsed ("30+" → 30) */
+  attackDamage?: number[]
   /** market price per variant, in USD, when the source knows it */
   prices: Partial<Record<Variant, number>>
   priceUpdatedAt?: string
@@ -55,6 +61,16 @@ export interface CatalogSet {
   releaseDate?: string
   ptcgoCode?: string
   printedTotal?: number
+}
+
+/** "130" → 130, "30+" → 30, "60×" → 60, "" → 0 */
+export function parseDamage(text: string | undefined): number {
+  const m = /\d+/.exec(text ?? '')
+  return m ? Number(m[0]) : 0
+}
+
+export function totalAttackPower(card: Pick<CatalogCard, 'attackDamage'>): number {
+  return (card.attackDamage ?? []).reduce((sum, d) => sum + d, 0)
 }
 
 /**

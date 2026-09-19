@@ -11,8 +11,17 @@ import { money } from '@/components/PriceTag'
 import { usePersistedState } from '@/lib/usePersistedState'
 
 const PAGE_SIZE = 9
-type Sort = 'newest' | 'value' | 'name'
-const SORTS: readonly Sort[] = ['newest', 'value', 'name']
+type Sort = 'newest' | 'value' | 'name' | 'type' | 'hp' | 'attack'
+const SORTS: readonly Sort[] = ['newest', 'value', 'name', 'type', 'hp', 'attack']
+
+/** Grouping label when sorting by type: the Pokémon's first type, else its kind. */
+function typeOf(c: CardRow): string {
+  if (c.types?.length) return c.types[0]
+  if (c.supertype === 'Trainer' || c.supertype === 'Energy') return c.supertype
+  return 'Unknown'
+}
+const TYPE_ORDER = ['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting', 'Darkness', 'Metal', 'Fairy', 'Dragon', 'Colorless', 'Trainer', 'Energy', 'Unknown']
+const typeRank = (t: string) => { const i = TYPE_ORDER.indexOf(t); return i === -1 ? TYPE_ORDER.length : i }
 
 export function CollectionPage() {
   const { role } = useAuth()
@@ -45,16 +54,30 @@ export function CollectionPage() {
     const q = query.trim().toLowerCase()
     const filtered = q ? cards.filter((c) => `${c.name} ${c.set_name ?? ''} ${c.card_number ?? ''}`.toLowerCase().includes(q)) : cards
     const sorted = [...filtered]
+    const byName = (a: CardRow, b: CardRow) => a.name.localeCompare(b.name)
     if (sort === 'value') sorted.sort((a, b) => (b.market_price ?? -1) - (a.market_price ?? -1))
-    if (sort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
+    if (sort === 'name') sorted.sort(byName)
+    if (sort === 'type') sorted.sort((a, b) => typeRank(typeOf(a)) - typeRank(typeOf(b)) || byName(a, b))
+    if (sort === 'hp') sorted.sort((a, b) => (b.hp ?? -1) - (a.hp ?? -1) || byName(a, b))
+    if (sort === 'attack') sorted.sort((a, b) => (b.attack_power ?? -1) - (a.attack_power ?? -1) || byName(a, b))
     return sorted
   }, [cards, query, sort])
 
+  // binder pages of nine, or one section per type when sorting by type
   const pages = useMemo(() => {
-    const out: CardRow[][] = []
-    for (let i = 0; i < visible.length; i += PAGE_SIZE) out.push(visible.slice(i, i + PAGE_SIZE))
+    const out: Array<{ title: string; cards: CardRow[] }> = []
+    if (sort === 'type') {
+      for (const c of visible) {
+        const t = typeOf(c)
+        const last = out.at(-1)
+        if (last && last.title === t) last.cards.push(c)
+        else out.push({ title: t, cards: [c] })
+      }
+      return out
+    }
+    for (let i = 0; i < visible.length; i += PAGE_SIZE) out.push({ title: `Page ${out.length + 1}`, cards: visible.slice(i, i + PAGE_SIZE) })
     return out
-  }, [visible])
+  }, [visible, sort])
 
   async function onRefresh() {
     if (!cards) return
@@ -116,14 +139,28 @@ export function CollectionPage() {
               <option value="newest">Newest first</option>
               <option value="value">Most valuable first</option>
               <option value="name">A to Z</option>
+              <option value="type">By type</option>
+              <option value="hp">Most HP first</option>
+              <option value="attack">Strongest attacks first</option>
             </select>
           </div>
           {pages.length === 0 && <p className="muted">No cards match “{query}”.</p>}
-          {pages.map((page, i) => (
-            <section key={i} className="binder-page">
-              <h3>Page {i + 1}</h3>
+          {pages.map((page) => (
+            <section key={page.title} className="binder-page">
+              <h3>
+                {sort === 'type' && <span className={`type-dot type-${page.title.toLowerCase()}`} aria-hidden="true" />}
+                {page.title}
+                {sort === 'type' && <span className="muted"> · {page.cards.reduce((n, c) => n + c.quantity, 0)}</span>}
+              </h3>
               <div className="grid">
-                {page.map((c) => <CardTile key={c.id} card={c} photoUrl={c.image_path ? photos[c.image_path] : undefined} />)}
+                {page.cards.map((c) => (
+                  <CardTile
+                    key={c.id}
+                    card={c}
+                    photoUrl={c.image_path ? photos[c.image_path] : undefined}
+                    stat={sort === 'hp' ? (c.hp != null ? `HP ${c.hp}` : undefined) : sort === 'attack' ? (c.attack_power != null ? `${c.attack_power} damage` : undefined) : undefined}
+                  />
+                ))}
               </div>
             </section>
           ))}
