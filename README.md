@@ -21,7 +21,8 @@ can see anyone else's cards or photos. Roles: **pending** (signed in, no
 access yet), **editor** (has a binder), **admin** (also approves people on the
 People page). The first account to sign in becomes admin. Every rule lives in
 `supabase/migrations/` as a row-security policy (`0001` sets up the schema,
-`0002` makes binders private, `0003` retires the viewer role); the app only
+`0002` makes binders private, `0003` retires the viewer role, `0004` limits the
+people list to admins); the app only
 mirrors them in `src/auth/permissions.ts` to hide buttons.
 
 ## Setting it up
