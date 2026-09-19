@@ -1,0 +1,15 @@
+{
+  "name": "Card Binder",
+  "short_name": "Binder",
+  "description": "Our Pokémon card collection and what it's worth.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F3F5F7",
+  "theme_color": "#F3F5F7",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
