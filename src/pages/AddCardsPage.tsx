@@ -311,7 +311,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
                   <span>Name</span>
                   <input className="input" value={current.name} onChange={(e) => onPatch(current.id, { name: e.target.value, match: null })} placeholder="Whatever's printed at the top" />
                 </label>
-                <p className="small muted">You can match it to the catalog later from the card's page.</p>
+                <p className="small muted">You can match it to the catalog later from the card's page. Brand-new sets can take the catalog a few weeks to add.</p>
               </details>
             </div>
           </div>

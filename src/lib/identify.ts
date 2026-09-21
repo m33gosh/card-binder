@@ -114,7 +114,10 @@ export async function identifyJapanese(latinText: string, jaText: string): Promi
     const full = await pricing.getCard(candidates[0].id, 'ja').catch(() => null)
     if (full) candidates[0] = full
   }
-  return { ref, name: candidates[0]?.name ?? null, text: jaText ? `${latinText}\n${jaText}` : latinText, candidates, language: 'ja' }
+  // no match (new set the catalog lacks?): still hand back the Japanese name
+  // so the card can be saved by name in one tap and matched later
+  const name = candidates[0]?.name ?? readJaName(jaText) ?? null
+  return { ref, name, text: jaText ? `${latinText}\n${jaText}` : latinText, candidates, language: 'ja' }
 }
 
 /** First run of kana/kanji of 2+ characters: on a Japanese read, that's the name. */
