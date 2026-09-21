@@ -1,7 +1,7 @@
 // Identify a card from its photo: read the bottom-left corner, then look the
 // number up in the catalog. Returns candidates, best first, or none.
 import { supabase } from './supabase'
-import { pricing, type CatalogCard, type CatalogLang } from './pricing'
+import { pricing, tcgplayerMirror, type CatalogCard, type CatalogLang } from './pricing'
 import { loadImage } from './images'
 import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
 import { japaneseSpeciesNameByDex } from './pokeNames'
@@ -55,11 +55,15 @@ export interface Identification {
 export async function lookupRef(ref: CardRef, lang: CatalogLang = 'en'): Promise<CatalogCard[]> {
   const sets = await getSets(lang)
   const candidates = candidateSets(ref, sets)
-  if (candidates.length === 0) return []
-  // one query for up to 6 sets; more than that is a guess anyway
-  const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id), lang)
-  const order = new Map(candidates.map((s, i) => [s.id, i]))
-  return cards.sort((a, b) => (order.get(a.set.id) ?? 99) - (order.get(b.set.id) ?? 99))
+  if (candidates.length > 0) {
+    // one query for up to 6 sets; more than that is a guess anyway
+    const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id), lang)
+    const order = new Map(candidates.map((s, i) => [s.id, i]))
+    if (cards.length) return cards.sort((a, b) => (order.get(a.set.id) ?? 99) - (order.get(b.set.id) ?? 99))
+  }
+  // not in the main catalog (a set it hasn't added yet?): try TCGplayer's recent listings
+  if (ref.total || ref.code) return tcgplayerMirror.findByPrintedNumber(ref.number, ref.total, lang, ref.code).catch(() => [])
+  return []
 }
 
 export async function identifyCard(cardBlob: Blob): Promise<Identification> {
@@ -80,11 +84,13 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
 /** Japanese cards: set code + number is exact; the Japanese read confirms the name. */
 export async function identifyJapanese(latinText: string, jaText: string): Promise<Identification> {
   const sets = await getSets('ja')
-  const ref = parseCardRef(latinText, sets.map((s) => s.id))
+  const mirrorCodes = await tcgplayerMirror.listSets('ja').then((l) => l.map((s) => s.ptcgoCode).filter((c): c is string => Boolean(c))).catch(() => [] as string[])
+  const ref = parseCardRef(latinText, [...sets.map((s) => s.id), ...mirrorCodes])
   const jaName = (c: CatalogCard) => jaText.includes(c.name) || c.name.includes(readJaName(jaText) ?? '\u0000')
 
-  // 1. set code + number is exact
+  // 1. set code + number is exact (main catalog, then TCGplayer's recent sets)
   let candidates = ref?.code ? await lookupRef(ref, 'ja') : []
+  if (candidates.length === 0 && ref?.total) candidates = await tcgplayerMirror.findByPrintedNumber(ref.number, ref.total, 'ja').catch(() => [])
 
   // 2. Pokédex number → species → its cards, narrowed to the collector number.
   //    Works even when the set code was missed (the "151" set mark fools the reader)

@@ -161,6 +161,13 @@ pages/           Collection, CardDetail, AddCards, People, Login, Pending
   isolated, so a model could take them as input).
 - Prices are USD from TCGplayer. Cardmarket (EUR) data is available from the
   same catalog if you'd rather.
+- Brand-new sets reach the main catalog a few weeks after release. Until
+  then the app falls back to TCGplayer's listings via tcgcsv.com (free,
+  daily), proxied by the `catalog-mirror` Edge Function because that site has
+  no CORS headers. Those matches get ids starting with `tcgp-`, TCGplayer
+  images and dollar prices, and refresh like any other card. Deploy the
+  function with `npx supabase functions deploy catalog-mirror --project-ref
+  YOUR-PROJECT-REF`.
 - The catalog moved from pokemontcg.io to TCGdex after a day of outages;
   `src/lib/pricing/pokemontcg.ts` is kept as a spare source and
   `scripts/migrate-catalog-ids.mjs` re-points stored ids between them.

@@ -3,3 +3,6 @@ project_id = "card-binder"
 
 [functions.ocr-card]
 verify_jwt = true
+
+[functions.catalog-mirror]
+verify_jwt = true
