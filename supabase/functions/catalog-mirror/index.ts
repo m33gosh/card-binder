@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
   if (typeof path !== 'string' || !/^(3|85)\/(groups|\d{1,7}\/(products|prices))$/.test(path)) return json('{"error":"Unsupported path."}', 400)
   const hit = cache.get(path)
   if (hit && Date.now() - hit.at < TTL) return json(hit.body)
-  const upstream = await fetch(`https://tcgcsv.com/tcgplayer/${path}`)
+  // the mirror refuses requests without a descriptive User-Agent
+  const upstream = await fetch(`https://tcgcsv.com/tcgplayer/${path}`, { headers: { 'User-Agent': 'CardBinder/1.0 (+https://github.com/m33gosh/card-binder)' } })
   if (!upstream.ok) return json(`{"error":"Mirror returned ${upstream.status}."}`, 502)
   const body = await upstream.text()
   cache.set(path, { at: Date.now(), body })
