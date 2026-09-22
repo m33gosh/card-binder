@@ -8,7 +8,7 @@ import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type
 const CATEGORY: Record<CatalogLang, number> = { en: 3, ja: 85 }
 const LANG_OF: Record<string, CatalogLang> = { '3': 'en', '85': 'ja' }
 const RECENT_DAYS = 240
-const MAX_GROUPS = 16
+const MAX_GROUPS = 24
 
 interface Group { groupId: number; name: string; abbreviation?: string; publishedOn?: string }
 interface Product { productId: number; name: string; imageUrl?: string; extendedData?: Array<{ name: string; value: string }> }
@@ -47,14 +47,23 @@ async function mirror<T>(path: string): Promise<T> {
   return memo.get(key) as Promise<T>
 }
 
-/** Sets published in the last few months, newest first. */
-export async function recentGroups(lang: CatalogLang): Promise<Group[]> {
-  const groups = await mirror<Group[]>(`${CATEGORY[lang]}/groups`)
-  const since = Date.now() - RECENT_DAYS * 24 * 3600 * 1000
-  return groups
-    .filter((g) => g.publishedOn && Date.parse(g.publishedOn) >= since)
-    .sort((a, b) => (b.publishedOn ?? '').localeCompare(a.publishedOn ?? ''))
+/**
+ * Sets published in the last few months, newest first, with proper sets
+ * ("M6a: …", "SV11W: …") ahead of promo and deck collections: the mirror
+ * bulk-publishes dozens of promo groups on one day, and cards printed N/T
+ * almost always belong to a proper set.
+ */
+export function orderGroups(groups: Group[], now = Date.now()): Group[] {
+  const since = now - RECENT_DAYS * 24 * 3600 * 1000
+  const recent = groups.filter((g) => g.publishedOn && Date.parse(g.publishedOn) >= since)
+  const isSet = (g: Group) => Boolean(groupCode(g)) && !/promo|deck|box|collection box|bundle/i.test(g.name)
+  return recent
+    .sort((a, b) => Number(isSet(b)) - Number(isSet(a)) || (b.publishedOn ?? '').localeCompare(a.publishedOn ?? ''))
     .slice(0, MAX_GROUPS)
+}
+
+export async function recentGroups(lang: CatalogLang): Promise<Group[]> {
+  return orderGroups(await mirror<Group[]>(`${CATEGORY[lang]}/groups`))
 }
 
 const field = (p: Product, name: string) => p.extendedData?.find((e) => e.name === name)?.value
@@ -119,7 +128,8 @@ export const tcgplayerMirror = {
   async findByPrintedNumber(number: string, total: string | undefined, lang: CatalogLang, code?: string): Promise<CatalogCard[]> {
     const n = strip(number).toUpperCase()
     const groups = await recentGroups(lang)
-    const byCode = code ? groups.filter((g) => groupCode(g)?.toUpperCase() === code.toUpperCase()) : []
+    const all = code ? await mirror<Group[]>(`${CATEGORY[lang]}/groups`) : []
+    const byCode = code ? all.filter((g) => groupCode(g)?.toUpperCase() === code.toUpperCase()) : []
     const out: CatalogCard[] = []
     for (const g of byCode.length ? byCode : groups) {
       const cards = await groupCards(lang, g)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupCode, parseAttack, productToCard } from './tcgcsv'
+import { groupCode, orderGroups, parseAttack, productToCard } from './tcgcsv'
 
 const group = { groupId: 24722, name: 'ME: 30th Celebration', publishedOn: '2026-09-16T00:00:00' }
 const product = {
@@ -43,5 +43,19 @@ describe('tcgplayer mirror mapping', () => {
     expect(parseAttack('[C] Gnaw (10+)')).toEqual({ name: 'Gnaw', damage: 10 })
     expect(groupCode({ groupId: 1, name: 'M6a: MEGA Expansion 30th Celebration' })).toBe('M6a')
     expect(groupCode({ groupId: 1, name: 'Celebrations' })).toBeUndefined()
+  })
+})
+
+describe('orderGroups', () => {
+  it('puts proper sets before promo collections published later', () => {
+    const now = Date.parse('2026-09-21T12:00:00Z')
+    const groups = [
+      { groupId: 1, name: 'CoroCoro Promotional Cards', publishedOn: '2026-09-21T00:00:00' },
+      { groupId: 2, name: 'Battle Road', publishedOn: '2026-09-21T00:00:00' },
+      { groupId: 3, name: 'M6a: MEGA Expansion 30th Celebration', publishedOn: '2026-09-16T00:00:00' },
+      { groupId: 4, name: 'M6: Storm Emeralda', publishedOn: '2026-07-31T00:00:00' },
+      { groupId: 5, name: 'S8a: 25th Anniversary Collection', publishedOn: '2021-10-22T00:00:00' },
+    ]
+    expect(orderGroups(groups, now).map((g) => g.groupId)).toEqual([3, 4, 1, 2])
   })
 })
