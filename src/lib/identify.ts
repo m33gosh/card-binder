@@ -73,9 +73,22 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   if (result.candidates.length > 0) return result
   // nothing in the English catalog: a Japanese set code, metric stats or a
   // Pokédex number in the corner mean this is probably a Japanese card
-  const [ja, en] = await Promise.all([getSets('ja'), getSets('en')])
-  const jaCode = japaneseCodeIn(text, ja.map((s) => s.id), en.map((s) => s.ptcgoCode ?? ''))
-  if (!jaCode && !looksNonEnglish(text)) return result
+  const [ja, en, mirrorJa] = await Promise.all([
+    getSets('ja'),
+    getSets('en'),
+    tcgplayerMirror.listSets('ja').catch(() => [] as Awaited<ReturnType<typeof getSets>>),
+  ])
+  const jaCodes = [...ja.map((s) => s.id), ...mirrorJa.map((s) => s.ptcgoCode ?? '')]
+  const jaCode = japaneseCodeIn(text, jaCodes, en.map((s) => s.ptcgoCode ?? ''))
+  let japanese = Boolean(jaCode) || looksNonEnglish(text)
+  // cards with no Pokédex line (VMAX, V, trainers) give no such hint: if the
+  // printed number exists only in a recent Japanese set, that's the answer
+  if (!japanese && result.ref?.total) {
+    const jaHits = await tcgplayerMirror.findByPrintedNumber(result.ref.number, result.ref.total, 'ja').catch(() => [] as CatalogCard[])
+    if (jaHits.length === 1) return { ...result, candidates: jaHits, name: jaHits[0].name, language: 'ja' }
+    japanese = jaHits.length > 1
+  }
+  if (!japanese) return result
   // a second read in Japanese gets the name and attacks for confirmation
   const jaText = await readCornerText(image, 'jpn').catch(() => '')
   return identifyJapanese(text, jaText)
