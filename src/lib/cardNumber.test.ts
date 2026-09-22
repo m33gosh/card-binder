@@ -7,8 +7,10 @@ describe('parseCardRef', () => {
   it('reads a modern corner', () => {
     expect(parseCardRef('Illus. AYUMI ODASHIMA J PBL EN 072/084 ©2026', codes)).toEqual({ number: '72', total: '84', code: 'PBL' })
   })
-  it('copes with OCR turning zeros into the letter O', () => {
+  it('copes with OCR turning digits into letters', () => {
     expect(parseCardRef('CRI EN O30/086', codes)).toEqual({ number: '30', total: '86', code: 'CRI' })
+    expect(parseCardRef('Mew VMAX 163/1O3', codes)).toEqual({ number: '163', total: '103', code: undefined })
+    expect(parseCardRef('Slowpoke OlO/103', codes)).toEqual({ number: '10', total: '103', code: undefined })
   })
   it('reads energy and promo formats', () => {
     expect(parseCardRef('SVE EN 007 ©2023', codes)).toEqual({ number: '7', code: 'SVE' })

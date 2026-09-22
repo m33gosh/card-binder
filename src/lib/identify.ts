@@ -54,7 +54,10 @@ export interface Identification {
 /** Resolve a card reference (from OCR or typed) to catalog cards. */
 export async function lookupRef(ref: CardRef, lang: CatalogLang = 'en'): Promise<CatalogCard[]> {
   const sets = await getSets(lang)
-  const candidates = candidateSets(ref, sets)
+  // a set code the main catalog doesn't know means a set it hasn't added:
+  // don't guess by set size there, ask the listings for that code instead
+  const knownCode = ref.code ? sets.some((s) => s.ptcgoCode?.toUpperCase() === ref.code!.toUpperCase()) : false
+  const candidates = ref.code && !knownCode ? [] : candidateSets(ref, sets)
   if (candidates.length > 0) {
     // one query for up to 6 sets; more than that is a guess anyway
     const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id), lang)

@@ -19,8 +19,10 @@ const strip = (n: string) => n.replace(/^0+(?=\d)/, '')
 export function parseCardRef(text: string, knownCodes: string[] = []): CardRef | null {
   const t = text
     .toUpperCase()
-    .replace(/[O]\s*\//g, '0/')
-    .replace(/\/\s*[O]/g, '/0')
+    // OCR swaps: letters O/I/L inside a number like 1O3/1I0 → 103/110
+    .replace(/\b([0-9OIL]{1,3})\s*\/\s*([0-9OIL]{2,3})\b/g, (m, a: string, b: string) =>
+      /\d/.test(a + b) ? `${a.replace(/O/g, '0').replace(/[IL]/g, '1')}/${b.replace(/O/g, '0').replace(/[IL]/g, '1')}` : m,
+    )
     // Japanese set codes like SV4a are often read as SY4A
     .replace(/\bSY(\d)/g, 'SV$1')
   // two-letter codes (HP, AR, …) collide with ordinary words; only trust 3+
