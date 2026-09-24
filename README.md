@@ -22,7 +22,8 @@ access yet), **editor** (has a binder), **admin** (also approves people on the
 People page). The first account to sign in becomes admin. Every rule lives in
 `supabase/migrations/` as a row-security policy (`0001` sets up the schema,
 `0002` makes binders private, `0003` retires the viewer role, `0004` limits the
-people list to admins, `0005` adds card stats, `0006` adds the card language);
+people list to admins, `0005` adds card stats, `0006` adds the card language, `0007` adds the English
+name of Japanese cards);
 the app only
 mirrors them in `src/auth/permissions.ts` to hide buttons.
 

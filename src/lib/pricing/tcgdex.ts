@@ -17,6 +17,7 @@ interface RestCard {
   rarity?: string
   image?: string
   illustrator?: string
+  dexId?: number[]
   category?: 'Pokemon' | 'Trainer' | 'Energy' | string
   types?: string[]
   hp?: number
@@ -99,6 +100,7 @@ export function toCatalogCard(card: RestCard, lang: CatalogLang = 'en', eurUsd: 
     types: card.types,
     hp: typeof card.hp === 'number' ? card.hp : undefined,
     illustrator: card.illustrator,
+    dexIds: card.dexId,
     attackNames: card.attacks?.map((a) => a.name),
     attackDamage: card.attacks?.map((a) => parseDamage(a.damage == null ? '' : String(a.damage))),
     prices,

@@ -15,6 +15,8 @@ export interface CardRow {
   id: string
   owner_id: string
   name: string
+  /** English name of a Japanese card */
+  name_alt: string | null
   set_name: string | null
   set_id: string | null
   card_number: string | null

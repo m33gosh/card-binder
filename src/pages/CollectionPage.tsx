@@ -52,7 +52,7 @@ export function CollectionPage() {
   const visible = useMemo(() => {
     if (!cards) return []
     const q = query.trim().toLowerCase()
-    const filtered = q ? cards.filter((c) => `${c.name} ${c.set_name ?? ''} ${c.card_number ?? ''}`.toLowerCase().includes(q)) : cards
+    const filtered = q ? cards.filter((c) => `${c.name} ${c.name_alt ?? ''} ${c.set_name ?? ''} ${c.card_number ?? ''}`.toLowerCase().includes(q)) : cards
     const sorted = [...filtered]
     const byName = (a: CardRow, b: CardRow) => a.name.localeCompare(b.name)
     if (sort === 'value') sorted.sort((a, b) => (b.market_price ?? -1) - (a.market_price ?? -1))

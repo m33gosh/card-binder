@@ -15,7 +15,7 @@ export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: s
         <div className="name">{card.name}</div>
         <PriceTag price={card.market_price} currency={card.price_currency} />
       </div>
-      <div className="meta">{stat ?? [card.quantity > 1 && `×${card.quantity}`, card.set_name, card.card_number && `#${card.card_number}`].filter(Boolean).join(' ')}</div>
+      <div className="meta">{stat ?? [card.quantity > 1 && `×${card.quantity}`, card.name_alt, card.set_name, card.card_number && `#${card.card_number}`].filter(Boolean).join(' · ')}</div>
     </Link>
   )
 }

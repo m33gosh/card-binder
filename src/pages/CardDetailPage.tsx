@@ -81,6 +81,7 @@ export function CardDetailPage() {
         </div>
         <div>
           <h1>{card.name}</h1>
+          {card.name_alt && <p className="muted" style={{ marginTop: -6 }}>{card.name_alt}</p>}
           <p className="muted">{[card.set_name, card.card_number && `#${card.card_number}`, card.rarity].filter(Boolean).join(' · ')}</p>
           <PriceTag price={card.market_price} currency={card.price_currency} big />
           {card.price_updated_at && (

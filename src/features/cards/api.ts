@@ -96,6 +96,7 @@ export function fieldsFromCatalog(match: CatalogCard, variant: CardRow['variant'
   const quote = pickPrice(match, variant, pricing.name)
   return {
     name: match.name,
+    name_alt: match.nameAlt ?? null,
     set_name: match.set.name,
     set_id: match.set.id,
     card_number: match.number,
@@ -143,6 +144,7 @@ export async function refreshPrices(
           price_source: quote.source,
           price_updated_at: new Date().toISOString(),
           api_image_url: match?.images.large || card.api_image_url,
+          name_alt: match?.nameAlt ?? card.name_alt,
           ...(match ? statsFromCatalog(match) : {}),
         })
         await recordPrice(row)

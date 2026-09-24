@@ -1,6 +1,6 @@
 import { tcgdexSource } from './tcgdex'
 import { codeAliases, tcgplayerMirror } from './tcgcsv'
-import { japaneseSpeciesName } from '../pokeNames'
+import { englishCardName, englishSpeciesNameByDex, japaneseSpeciesName } from '../pokeNames'
 import type { CatalogCard, PricingSource } from './types'
 
 export * from './types'
@@ -22,16 +22,27 @@ export const pricing: PricingSource = {
 
   async getCard(id, lang) {
     if (id.startsWith('tcgp-')) return tcgplayerMirror.getCard(id)
-    const card = await tcgdexSource.getCard(id, lang)
-    if (!card || card.images.large) return card
-    // the main catalog has no picture yet (newest Japanese sets): borrow TCGplayer's
-    for (const code of codeAliases(card.set.id)) {
-      const twin = await tcgplayerMirror
-        .findByPrintedNumber(card.number, card.set.printedTotal != null ? String(card.set.printedTotal) : undefined, card.language, code)
-        .catch(() => [] as CatalogCard[])
+    let card = await tcgdexSource.getCard(id, lang)
+    if (!card) return null
+    // Japanese cards: work out the English name from the Pokédex number
+    if (card.language === 'ja' && !card.nameAlt && card.dexIds?.[0]) {
+      const species = await englishSpeciesNameByDex(card.dexIds[0]).catch(() => null)
+      if (species) card = { ...card, nameAlt: englishCardName(card.name, species) }
+    }
+    if (card.images.large && (card.language !== 'ja' || card.nameAlt)) return card
+    // no picture yet, or still no English name: the matching TCGplayer listing has both
+    const total = card.set.printedTotal != null ? String(card.set.printedTotal) : undefined
+    const attempts: Array<string | undefined> = [...codeAliases(card.set.id), undefined]
+    for (const code of attempts) {
+      const twin = await tcgplayerMirror.findByPrintedNumber(card.number, total, card.language, code).catch(() => [] as CatalogCard[])
       for (const t of twin) {
         // the two catalogs can number promos differently: the names must agree
-        if (t.images.large && (await sameCard(card, t))) return { ...card, images: t.images }
+        if (!(await sameCard(card, t))) continue
+        return {
+          ...card,
+          images: card.images.large ? card.images : t.images,
+          nameAlt: card.nameAlt ?? (card.language === 'ja' && t.name !== card.name ? t.name : undefined),
+        }
       }
     }
     return card

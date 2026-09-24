@@ -165,7 +165,7 @@ export function AddCardsPage() {
           set_name: null, set_id: null, card_number: null, rarity: null,
           api_card_id: null, api_image_url: null,
           market_price: null, price_currency: 'USD', price_source: null, price_updated_at: null,
-          supertype: null, types: null, hp: null, attack_power: null, language: 'en',
+          supertype: null, types: null, hp: null, attack_power: null, language: 'en', name_alt: null,
           ...catalog,
           image_path,
           variant: d.variant,

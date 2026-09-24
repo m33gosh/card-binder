@@ -71,3 +71,49 @@ export async function japaneseSpeciesNameByDex(dex: number): Promise<string | nu
   }
   return ja
 }
+
+/** English species name by National Pokédex number. */
+export async function englishSpeciesNameByDex(dex: number): Promise<string | null> {
+  const cache = readCache()
+  const key = `#en${dex}`
+  if (key in cache) return cache[key] || null
+  let en: string | null = null
+  try {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${dex}`)
+    if (res.ok) {
+      const body = (await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }
+      en = body.names?.find((n) => n.language.name === 'en')?.name ?? null
+    }
+  } catch {
+    return null
+  }
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: en ?? '' }))
+  } catch {
+    /* ignore */
+  }
+  return en
+}
+
+const JA_PREFIXES: Array<[RegExp, string]> = [
+  [/^メガ/, 'Mega '],
+  [/^アローラ/, 'Alolan '],
+  [/^ガラル/, 'Galarian '],
+  [/^ヒスイ/, 'Hisuian '],
+  [/^パルデア/, 'Paldean '],
+]
+
+/** "メガアブソルex" + species "Absol" → "Mega Absol ex". */
+export function englishCardName(japaneseName: string, englishSpecies: string): string {
+  let rest = japaneseName
+  let prefix = ''
+  for (const [re, en] of JA_PREFIXES) {
+    if (re.test(rest)) {
+      prefix = en
+      rest = rest.replace(re, '')
+      break
+    }
+  }
+  const suffix = /(ex|EX|V|VMAX|VSTAR|GX|BREAK)$/.exec(rest)?.[1]
+  return `${prefix}${englishSpecies}${suffix ? ' ' + suffix : ''}`.trim()
+}

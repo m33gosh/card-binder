@@ -53,6 +53,10 @@ export interface CatalogCard {
   /** which catalog the id belongs to; Japanese cards have their own sets and numbers */
   language: CatalogLang
   name: string
+  /** the English name of a Japanese card, when known */
+  nameAlt?: string
+  /** National Pokédex numbers, when the catalog knows them */
+  dexIds?: number[]
   number: string
   rarity?: string
   set: { id: string; name: string; series?: string; printedTotal?: number; releaseDate?: string }
