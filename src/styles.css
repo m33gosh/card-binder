@@ -222,6 +222,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .result:hover, .result.selected { border-color: var(--ink); }
 .result.selected { box-shadow: 0 0 0 3px var(--yellow); }
 .result img { border-radius: 6px; aspect-ratio: 63/88; object-fit: cover; width: 100%; }
+.no-image { aspect-ratio: 63/88; width: 100%; border-radius: 6px; background: var(--sleeve-deep); color: var(--slate); font-size: 0.75rem; display: grid; place-items: center; text-align: center; padding: 6px; }
 .result .name { font-family: var(--font-display); font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .result .meta { font-size: 0.72rem; color: var(--slate); }
 

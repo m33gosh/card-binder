@@ -323,7 +323,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
           <div key={d.id} className={`review-item${d.match ? ' matched' : ''}${!d.match && d.suggested ? ' suggested' : ''}`}>
             <div className="pair">
               <img src={d.url} alt="" />
-              {!d.match && d.suggested && <img src={d.suggested.images.small} alt={`${d.suggested.name} from the catalog`} />}
+              {!d.match && d.suggested && (d.suggested.images.small ? <img src={d.suggested.images.small} alt={`${d.suggested.name} from the catalog`} /> : <div className="no-image">No picture yet</div>)}
             </div>
             {!d.match && d.suggested ? (
               <>

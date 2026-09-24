@@ -4,7 +4,7 @@ import { PriceTag } from './PriceTag'
 
 export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: string; stat?: string }) {
   // Official art when we have a match; the owner's photo otherwise.
-  const src = card.api_image_url ?? photoUrl
+  const src = card.api_image_url || photoUrl
   return (
     <Link to={`/cards/${card.id}`} className="card-tile">
       <div className={`art${src ? '' : ' empty'}`}>

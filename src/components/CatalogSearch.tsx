@@ -110,7 +110,7 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
           const quote = pickPrice(c, 'normal', pricing.name)
           return (
             <button key={c.id} type="button" className={`result${selectedId === c.id ? ' selected' : ''}`} onClick={() => void pick(c)} disabled={picking !== null}>
-              <img src={c.images.small} alt="" loading="lazy" />
+              {c.images.small ? <img src={c.images.small} alt="" loading="lazy" /> : <div className="no-image">No picture yet</div>}
               <div className="name">{c.name}</div>
               {translated && c.name.includes(translated.ja) && <div className="meta">{translated.en}{c.name.replace(translated.ja, '')}</div>}
               <div className="meta">{c.set.name} #{c.number}</div>

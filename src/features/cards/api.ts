@@ -101,7 +101,7 @@ export function fieldsFromCatalog(match: CatalogCard, variant: CardRow['variant'
     card_number: match.number,
     rarity: match.rarity ?? null,
     api_card_id: match.id,
-    api_image_url: match.images.large,
+    api_image_url: match.images.large || null,
     language: match.language,
     ...statsFromCatalog(match),
     market_price: quote?.price ?? null,
@@ -142,7 +142,7 @@ export async function refreshPrices(
           price_currency: quote.currency,
           price_source: quote.source,
           price_updated_at: new Date().toISOString(),
-          api_image_url: match?.images.large ?? card.api_image_url,
+          api_image_url: match?.images.large || card.api_image_url,
           ...(match ? statsFromCatalog(match) : {}),
         })
         await recordPrice(row)
