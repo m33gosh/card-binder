@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { cardSubtitle, cardTitle, type CardRow } from '@/features/cards/types'
+import { cardTitle, type CardRow } from '@/features/cards/types'
 import { PriceTag } from './PriceTag'
 
 export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: string; stat?: string }) {
@@ -15,7 +15,7 @@ export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: s
         <div className="name">{cardTitle(card)}</div>
         <PriceTag price={card.market_price} currency={card.price_currency} />
       </div>
-      <div className="meta">{stat ?? [card.quantity > 1 && `×${card.quantity}`, cardSubtitle(card), card.set_name, card.card_number && `#${card.card_number}`].filter(Boolean).join(' · ')}</div>
+      <div className="meta">{stat ?? [card.quantity > 1 && `×${card.quantity}`, card.set_name, card.card_number && `#${card.card_number}`].filter(Boolean).join(' ')}</div>
     </Link>
   )
 }
