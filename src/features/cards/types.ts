@@ -51,3 +51,13 @@ export interface PricePoint {
   source: string
   recorded_at: string
 }
+
+/** What to call a card: the English name when we know it, else the printed one. */
+export function cardTitle(card: Pick<CardRow, 'name' | 'name_alt' | 'language'>): string {
+  return card.language === 'ja' && card.name_alt ? card.name_alt : card.name
+}
+
+/** The other name, shown small under the title: the printed Japanese name. */
+export function cardSubtitle(card: Pick<CardRow, 'name' | 'name_alt' | 'language'>): string | null {
+  return card.language === 'ja' && card.name_alt ? card.name : null
+}

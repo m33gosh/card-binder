@@ -327,7 +327,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
             </div>
             {!d.match && d.suggested ? (
               <>
-                <div className="name">Is it {d.suggested.name}?</div>
+                <div className="name">Is it {d.suggested.nameAlt ?? d.suggested.name}?</div>
                 <div className="meta small muted">{d.suggested.language === 'ja' && 'Japanese · '}{d.suggested.set.name} #{d.suggested.number}</div>
                 <button className="btn primary" onClick={() => onConfirm(d.id)}>Yes, that's it</button>
                 <button className="btn" onClick={() => onIdentify(d.id)}>No, find it</button>

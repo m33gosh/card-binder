@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { canEditCard } from '@/auth/permissions'
 import { deleteCard, fieldsFromCatalog, getCard, getPriceHistory, signImageUrls, updateCard } from '@/features/cards/api'
-import { CONDITION_LABELS, type CardRow, type Condition, type PricePoint } from '@/features/cards/types'
+import { CONDITION_LABELS, cardSubtitle, cardTitle, type CardRow, type Condition, type PricePoint } from '@/features/cards/types'
 import { VARIANT_LABELS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
 import { CatalogSearch } from '@/components/CatalogSearch'
 import { PriceTag, money } from '@/components/PriceTag'
@@ -80,8 +80,8 @@ export function CardDetailPage() {
           )}
         </div>
         <div>
-          <h1>{card.name}</h1>
-          {card.name_alt && <p className="muted" style={{ marginTop: -6 }}>{card.name_alt}</p>}
+          <h1>{cardTitle(card)}</h1>
+          {cardSubtitle(card) && <p className="muted" style={{ marginTop: -6 }}>{cardSubtitle(card)}</p>}
           <p className="muted">{[card.set_name, card.card_number && `#${card.card_number}`, card.rarity].filter(Boolean).join(' · ')}</p>
           <PriceTag price={card.market_price} currency={card.price_currency} big />
           {card.price_updated_at && (

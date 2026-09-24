@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { can } from '@/auth/permissions'
 import { collectionValue, listCards, refreshPrices, signImageUrls } from '@/features/cards/api'
-import type { CardRow } from '@/features/cards/types'
+import { cardTitle, type CardRow } from '@/features/cards/types'
 import { CardTile } from '@/components/CardTile'
 import { RefreshIcon } from '@/components/Icons'
 import { Spinner } from '@/components/Spinner'
@@ -54,7 +54,7 @@ export function CollectionPage() {
     const q = query.trim().toLowerCase()
     const filtered = q ? cards.filter((c) => `${c.name} ${c.name_alt ?? ''} ${c.set_name ?? ''} ${c.card_number ?? ''}`.toLowerCase().includes(q)) : cards
     const sorted = [...filtered]
-    const byName = (a: CardRow, b: CardRow) => a.name.localeCompare(b.name)
+    const byName = (a: CardRow, b: CardRow) => cardTitle(a).localeCompare(cardTitle(b))
     if (sort === 'value') sorted.sort((a, b) => (b.market_price ?? -1) - (a.market_price ?? -1))
     if (sort === 'name') sorted.sort(byName)
     if (sort === 'type') sorted.sort((a, b) => typeRank(typeOf(a)) - typeRank(typeOf(b)) || byName(a, b))
