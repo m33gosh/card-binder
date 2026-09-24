@@ -1,5 +1,5 @@
 import { tcgdexSource } from './tcgdex'
-import { tcgplayerMirror } from './tcgcsv'
+import { codeAliases, tcgplayerMirror } from './tcgcsv'
 import type { CatalogCard, PricingSource } from './types'
 
 export * from './types'
@@ -23,11 +23,14 @@ export const pricing: PricingSource = {
     const card = await tcgdexSource.getCard(id, lang)
     if (!card || card.images.large) return card
     // the main catalog has no picture yet (newest Japanese sets): borrow TCGplayer's
-    const twin = await tcgplayerMirror
-      .findByPrintedNumber(card.number, card.set.printedTotal != null ? String(card.set.printedTotal) : undefined, card.language, card.set.id)
-      .catch(() => [] as CatalogCard[])
-    const withImage = twin.find((t) => t.images.large)
-    return withImage ? { ...card, images: withImage.images } : card
+    for (const code of codeAliases(card.set.id)) {
+      const twin = await tcgplayerMirror
+        .findByPrintedNumber(card.number, card.set.printedTotal != null ? String(card.set.printedTotal) : undefined, card.language, code)
+        .catch(() => [] as CatalogCard[])
+      const withImage = twin.find((t) => t.images.large)
+      if (withImage) return { ...card, images: withImage.images }
+    }
+    return card
   },
 
   listSets: (lang) => tcgdexSource.listSets(lang),

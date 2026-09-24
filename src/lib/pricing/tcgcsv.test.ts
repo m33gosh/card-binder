@@ -43,6 +43,7 @@ describe('tcgplayer mirror mapping', () => {
     expect(parseAttack('[C] Gnaw (10+)')).toEqual({ name: 'Gnaw', damage: 10 })
     expect(groupCode({ groupId: 1, name: 'M6a: MEGA Expansion 30th Celebration' })).toBe('M6a')
     expect(groupCode({ groupId: 1, name: 'Celebrations' })).toBeUndefined()
+    expect(groupCode({ groupId: 1, name: 'M-P Promotional Cards' })).toBe('M-P')
   })
 })
 

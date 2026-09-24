@@ -115,11 +115,15 @@ async function groupCards(lang: CatalogLang, group: Group): Promise<CatalogCard[
   return products.map((p) => productToCard(p, group, cat, prices)).filter((c): c is CatalogCard => c !== null)
 }
 
-/** Printed set code from a group name like "M6a: MEGA Expansion 30th Celebration". */
+/** Printed set code from a group name like "M6a: MEGA Expansion 30th Celebration" or "M-P Promotional Cards". */
 export function groupCode(group: Group): string | undefined {
-  const m = /^([A-Za-z0-9.-]{1,8}):\s/.exec(group.name)
+  const m = /^([A-Za-z0-9.-]{1,8}):\s/.exec(group.name) ?? /^([A-Za-z0-9-]{2,6})\s+Promo/i.exec(group.name)
   return m?.[1] ?? group.abbreviation
 }
+
+/** The main catalog's promo set ids versus the codes printed on the cards and used in listings. */
+export const SET_CODE_ALIASES: Record<string, string> = { mep: 'M-P', svp: 'SV-P', smp: 'SM-P', swshp: 'SWSH', sp: 'S-P' }
+export const codeAliases = (setId: string) => [setId, SET_CODE_ALIASES[setId.toLowerCase()]].filter((c): c is string => Boolean(c))
 
 export const tcgplayerMirror = {
   name: 'TCGplayer via tcgcsv.com',
