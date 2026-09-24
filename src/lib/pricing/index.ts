@@ -1,5 +1,6 @@
 import { tcgdexSource } from './tcgdex'
 import { codeAliases, tcgplayerMirror } from './tcgcsv'
+import { japaneseSpeciesName } from '../pokeNames'
 import type { CatalogCard, PricingSource } from './types'
 
 export * from './types'
@@ -27,12 +28,28 @@ export const pricing: PricingSource = {
       const twin = await tcgplayerMirror
         .findByPrintedNumber(card.number, card.set.printedTotal != null ? String(card.set.printedTotal) : undefined, card.language, code)
         .catch(() => [] as CatalogCard[])
-      const withImage = twin.find((t) => t.images.large)
-      if (withImage) return { ...card, images: withImage.images }
+      for (const t of twin) {
+        // the two catalogs can number promos differently: the names must agree
+        if (t.images.large && (await sameCard(card, t))) return { ...card, images: t.images }
+      }
     }
     return card
   },
+}
+
+/** Do a main-catalog card and a TCGplayer listing describe the same card? */
+async function sameCard(card: CatalogCard, listing: CatalogCard): Promise<boolean> {
+  const a = card.name.toLowerCase()
+  const b = listing.name.toLowerCase()
+  if (a === b || a.includes(b) || b.includes(a)) return true
+  // energies: "基本炎エネルギー" vs "Basic Fire Energy"
+  if (/energy/.test(b) && /エネルギー|energy/.test(a)) return true
+  // Japanese name vs English listing: compare the species
+  if (card.language === 'ja') {
+    const ja = await japaneseSpeciesName(listing.name).catch(() => null)
+    if (ja && card.name.includes(ja)) return true
+  }
+  return false
 
   listSets: (lang) => tcgdexSource.listSets(lang),
   findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
-}
