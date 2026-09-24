@@ -168,7 +168,9 @@ export const tcgplayerMirror = {
     return (await groupCards(lang, group)).find((c) => c.id === id) ?? null
   },
 
+  /** Every set the listings know for this language (not just recent ones). */
   async listSets(lang: CatalogLang): Promise<CatalogSet[]> {
-    return (await recentGroups(lang)).map((g) => ({ id: `tcgp-${CATEGORY[lang]}-${g.groupId}`, name: g.name, releaseDate: g.publishedOn, ptcgoCode: groupCode(g) }))
+    const groups = await mirror<Group[]>(`${CATEGORY[lang]}/groups`)
+    return groups.map((g) => ({ id: `tcgp-${CATEGORY[lang]}-${g.groupId}`, name: g.name, releaseDate: g.publishedOn, ptcgoCode: groupCode(g) }))
   },
 }

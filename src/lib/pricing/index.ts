@@ -24,6 +24,11 @@ export const pricing: PricingSource = {
     if (id.startsWith('tcgp-')) return tcgplayerMirror.getCard(id)
     let card = await tcgdexSource.getCard(id, lang)
     if (!card) return null
+    // Japanese cards: the listings name the set in English ("Mega Brave", not "メガブレイブ")
+    if (card.language === 'ja' && /[^\x00-\x7F]/.test(card.set.name)) {
+      const english = await englishSetName(card.set.id).catch(() => null)
+      if (english) card = { ...card, set: { ...card.set, name: english } }
+    }
     // Japanese cards: work out the English name from the Pokédex number
     if (card.language === 'ja' && !card.nameAlt && card.dexIds?.[0]) {
       const species = await englishSpeciesNameByDex(card.dexIds[0]).catch(() => null)
@@ -50,6 +55,16 @@ export const pricing: PricingSource = {
 
   listSets: (lang) => tcgdexSource.listSets(lang),
   findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
+}
+
+/** The English name of a Japanese set, from the TCGplayer listing with the same code. */
+export async function englishSetName(setId: string): Promise<string | null> {
+  const groups = await tcgplayerMirror.listSets('ja')
+  for (const code of codeAliases(setId)) {
+    const g = groups.find((x) => x.ptcgoCode?.toUpperCase() === code.toUpperCase())
+    if (g) return g.name.replace(/^[A-Za-z0-9.-]{1,8}:\s*/, '').replace(/^[A-Za-z0-9-]{2,6}\s+(?=Promo)/i, '')
+  }
+  return null
 }
 
 /** Do a main-catalog card and a TCGplayer listing describe the same card? */
