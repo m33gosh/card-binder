@@ -8,7 +8,8 @@ export { tcgplayerMirror }
 
 /**
  * The main catalog (TCGdex) answers first. The TCGplayer mirror fills in what
- * it lacks: brand-new sets, and any card whose id starts with "tcgp-".
+ * it lacks: brand-new sets, any card whose id starts with "tcgp-", and
+ * pictures for cards the main catalog hasn't photographed yet.
  */
 export const pricing: PricingSource = {
   name: tcgdexSource.name,
@@ -35,10 +36,13 @@ export const pricing: PricingSource = {
     }
     return card
   },
+
+  listSets: (lang) => tcgdexSource.listSets(lang),
+  findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
 }
 
 /** Do a main-catalog card and a TCGplayer listing describe the same card? */
-async function sameCard(card: CatalogCard, listing: CatalogCard): Promise<boolean> {
+export async function sameCard(card: CatalogCard, listing: CatalogCard): Promise<boolean> {
   const a = card.name.toLowerCase()
   const b = listing.name.toLowerCase()
   if (a === b || a.includes(b) || b.includes(a)) return true
@@ -50,6 +54,4 @@ async function sameCard(card: CatalogCard, listing: CatalogCard): Promise<boolea
     if (ja && card.name.includes(ja)) return true
   }
   return false
-
-  listSets: (lang) => tcgdexSource.listSets(lang),
-  findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
+}

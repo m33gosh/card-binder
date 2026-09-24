@@ -135,7 +135,8 @@ export const tcgdexSource: PricingSource = {
       const list = (await rest<Array<{ id: string; localId: string; name: string; image?: string }>>(`/cards?name=${encodeURIComponent(q)}&pagination:itemsPerPage=60`, 'ja')) ?? []
       const sets = await this.listSets('ja')
       const byId = new Map(sets.map((s) => [s.id.toLowerCase(), s]))
-      let cards = list.map((c) => briefToCatalogCard({ ...c, set: { id: c.id.split('-')[0], name: byId.get(c.id.split('-')[0].toLowerCase())?.name ?? c.id.split('-')[0] } }, 'ja'))
+      const setOf = (id: string) => id.slice(0, Math.max(0, id.lastIndexOf('-')))
+      let cards = list.map((c) => briefToCatalogCard({ ...c, set: { id: setOf(c.id), name: byId.get(setOf(c.id).toLowerCase())?.name ?? setOf(c.id) } }, 'ja'))
       if (number?.trim()) {
         const n = number.trim().replace(/^0+(?=\d)/, '').toUpperCase()
         cards = cards.filter((c) => c.number.toUpperCase() === n)
