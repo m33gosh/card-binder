@@ -64,7 +64,7 @@ export const pricing: PricingSource = {
  * Search results from the main catalog lack pictures for its newest Japanese
  * sets. Borrow them from the listings, one lookup per set, matched by number.
  */
-async function withListingPictures(cards: CatalogCard[]): Promise<CatalogCard[]> {
+export async function withListingPictures(cards: CatalogCard[]): Promise<CatalogCard[]> {
   const missing = cards.filter((c) => !c.images.small && c.language === 'ja')
   if (missing.length === 0) return cards
   const bySet = new Map<string, CatalogCard[]>()

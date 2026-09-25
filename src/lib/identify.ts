@@ -1,7 +1,7 @@
 // Identify a card from its photo: read the bottom-left corner, then look the
 // number up in the catalog. Returns candidates, best first, or none.
 import { supabase } from './supabase'
-import { pricing, tcgplayerMirror, type CatalogCard, type CatalogLang } from './pricing'
+import { pricing, tcgplayerMirror, withListingPictures, type CatalogCard, type CatalogLang } from './pricing'
 import { loadImage } from './images'
 import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
 import { japaneseSpeciesNameByDex } from './pokeNames'
@@ -62,7 +62,7 @@ export async function lookupRef(ref: CardRef, lang: CatalogLang = 'en'): Promise
     // one query for up to 6 sets; more than that is a guess anyway
     const cards = await pricing.findByNumber(ref.number, candidates.slice(0, 6).map((s) => s.id), lang)
     const order = new Map(candidates.map((s, i) => [s.id, i]))
-    if (cards.length) return cards.sort((a, b) => (order.get(a.set.id) ?? 99) - (order.get(b.set.id) ?? 99))
+    if (cards.length) return withListingPictures(cards.sort((a, b) => (order.get(a.set.id) ?? 99) - (order.get(b.set.id) ?? 99)))
   }
   // not in the main catalog (a set it hasn't added yet?): try TCGplayer's recent listings
   if (ref.total || ref.code) return tcgplayerMirror.findByPrintedNumber(ref.number, ref.total, lang, ref.code).catch(() => [])
