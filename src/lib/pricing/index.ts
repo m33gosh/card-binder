@@ -41,8 +41,11 @@ export const pricing: PricingSource = {
     for (const code of attempts) {
       const twin = await tcgplayerMirror.findByPrintedNumber(card.number, total, card.language, code).catch(() => [] as CatalogCard[])
       for (const t of twin) {
-        // the two catalogs can number promos differently: the names must agree
-        if (!(await sameCard(card, t))) continue
+        // the two catalogs can number promos differently: the names must agree,
+        // except that within a proper set (code matched, not a promo set) a
+        // trainer or energy with the same number is the same card
+        const sameSetNonPokemon = Boolean(code) && !/promo/i.test(t.set.name) && card.supertype !== 'Pokémon' && t.supertype === card.supertype
+        if (!sameSetNonPokemon && !(await sameCard(card, t))) continue
         return {
           ...card,
           images: card.images.large ? card.images : t.images,
