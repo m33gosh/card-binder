@@ -6,6 +6,8 @@ import { BUILD_VERSION } from '../version'
 
 export async function reloadIfStale(): Promise<void> {
   if (!/^https?:/.test(location.protocol)) return
+  // never interrupt a sign-in landing back from Google
+  if (/[?&](code|error)=/.test(location.search)) return
   try {
     if (sessionStorage.getItem('card-binder:reloaded') === BUILD_VERSION) return
   } catch {

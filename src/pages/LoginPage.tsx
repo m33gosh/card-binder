@@ -5,8 +5,9 @@ import { GoogleIcon } from '@/components/Icons'
 const iconUrl = `${import.meta.env.BASE_URL}icons/icon.svg`
 
 export function LoginPage() {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, authError } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const shown = error ?? authError
   return (
     <div className="login">
       <div className="panel">
@@ -19,7 +20,7 @@ export function LoginPage() {
         >
           <GoogleIcon /> Sign in with Google
         </button>
-        {error && <div className="notice error" style={{ marginTop: 14 }}>{error}</div>}
+        {shown && <div className="notice error" style={{ marginTop: 14 }}>{shown}</div>}
       </div>
     </div>
   )

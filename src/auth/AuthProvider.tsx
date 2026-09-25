@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Role } from './permissions'
+import { reloadIfStale } from '@/lib/freshness'
 
 export interface Profile {
   id: string
@@ -14,6 +15,8 @@ export interface Profile {
 
 interface AuthState {
   loading: boolean
+  /** why the last sign-in attempt failed, if it did */
+  authError: string | null
   session: Session | null
   user: User | null
   profile: Profile | null
@@ -34,6 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [authError, setAuthError] = useState<string | null>(() => {
+    // Google can send us back with an error instead of a code
+    const params = new URLSearchParams(window.location.search)
+    const desc = params.get('error_description') ?? params.get('error')
+    return desc ? desc.replace(/\+/g, ' ') : null
+  })
 
   const loadProfile = useCallback(async (userId: string | undefined) => {
     if (!userId) {
@@ -46,11 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (cancelled) return
+      if (error) setAuthError(error.message)
+      else if (!data.session && window.location.search.includes('code=')) setAuthError('Google sent us back, but the sign-in could not be completed. Please try again.')
       setSession(data.session)
       await loadProfile(data.session?.user.id)
       setLoading(false)
+      // only now, with the session settled, check for a newer build
+      void reloadIfStale()
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next)
@@ -74,7 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       role: profile?.role ?? null,
+      authError,
       signInWithGoogle: async () => {
+        setAuthError(null)
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo: appOrigin(), queryParams: { prompt: 'select_account' } },
@@ -87,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshProfile: () => loadProfile(session?.user.id),
     }),
-    [loading, session, profile, loadProfile],
+    [loading, session, profile, loadProfile, authError],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
