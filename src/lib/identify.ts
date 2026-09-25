@@ -131,8 +131,8 @@ export async function identifyJapanese(latinText: string, jaText: string): Promi
     const confirmed = candidates.filter(jaName)
     if (confirmed.length) candidates = confirmed
   }
-  // search results are brief; fetch the chosen card in full (prices, stats)
-  if (candidates[0] && Object.keys(candidates[0].prices).length === 0) {
+  // search results are brief; fetch the chosen card in full (prices, stats, picture, English name)
+  if (candidates[0] && (Object.keys(candidates[0].prices).length === 0 || !candidates[0].images.large || !candidates[0].nameAlt)) {
     const full = await pricing.getCard(candidates[0].id, 'ja').catch(() => null)
     if (full) candidates[0] = full
   }

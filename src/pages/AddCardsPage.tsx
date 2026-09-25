@@ -12,6 +12,7 @@ import { pickPhotos } from '@/lib/camera'
 import { DEFAULT_GRID, cropRegion, gridCells, loadImage, normalizeForUpload, toDecodableBlob, type GridSpec } from '@/lib/images'
 import { pickPrice, pricing, STANDARD_VARIANTS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
 import { identifyCard } from '@/lib/identify'
+import { looksNonEnglish } from '@/lib/cardNumber'
 
 interface Draft {
   id: string
@@ -29,6 +30,8 @@ interface Draft {
   readName: string | null
   /** everything the reader saw, for when a suggestion is puzzling */
   readText: string | null
+  /** which catalog the reader thinks this card belongs to */
+  readLang: 'en' | 'ja'
 }
 
 type Step =
@@ -55,7 +58,7 @@ export function AddCardsPage() {
   }
 
   function draftFrom(blob: Blob): Draft {
-    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting', readNumber: null, readName: null, readText: null }
+    return { id: crypto.randomUUID(), blob, url: URL.createObjectURL(blob), match: null, name: '', variant: 'normal', suggested: null, reading: 'waiting', readNumber: null, readName: null, readText: null, readLang: 'en' }
   }
 
   async function startBinderPage() {
@@ -107,7 +110,8 @@ export function AddCardsPage() {
         try {
           const result = await identifyCard(d.blob)
           const readNumber = result.ref ? (result.ref.total ? `${result.ref.number}/${result.ref.total}` : result.ref.number) : null
-          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readNumber, readName: result.name, readText: result.text || null })
+          const readLang = result.language === 'ja' || looksNonEnglish(result.text) ? 'ja' : 'en'
+          patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readNumber, readName: result.name, readText: result.text || null, readLang })
         } catch {
           patchDraft(d.id, { reading: 'failed' })
         }
@@ -302,6 +306,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
                 key={current.id}
                 initialName={current.name || (current.readNumber ? '' : current.readName ?? '')}
                 initialNumber={current.readNumber ?? ''}
+                initialLang={current.readLang}
                 selectedId={current.match?.id}
                 onSelect={(m) => onIdentified(current.id, m)}
               />

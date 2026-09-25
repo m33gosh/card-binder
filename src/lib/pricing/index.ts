@@ -16,7 +16,7 @@ export const pricing: PricingSource = {
 
   async search(query) {
     const main = await tcgdexSource.search(query)
-    if (main.length) return main
+    if (main.length) return withListingPictures(main)
     return tcgplayerMirror.search(query.name, query.lang ?? 'en').catch(() => [] as CatalogCard[])
   },
 
@@ -58,6 +58,31 @@ export const pricing: PricingSource = {
 
   listSets: (lang) => tcgdexSource.listSets(lang),
   findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
+}
+
+/**
+ * Search results from the main catalog lack pictures for its newest Japanese
+ * sets. Borrow them from the listings, one lookup per set, matched by number.
+ */
+async function withListingPictures(cards: CatalogCard[]): Promise<CatalogCard[]> {
+  const missing = cards.filter((c) => !c.images.small && c.language === 'ja')
+  if (missing.length === 0) return cards
+  const bySet = new Map<string, CatalogCard[]>()
+  for (const c of missing) bySet.set(c.set.id, [...(bySet.get(c.set.id) ?? []), c])
+  const found = new Map<string, CatalogCard['images']>()
+  await Promise.all(
+    [...bySet.entries()].slice(0, 4).map(async ([setId, group]) => {
+      for (const code of codeAliases(setId)) {
+        for (const c of group) {
+          const twin = await tcgplayerMirror.findByPrintedNumber(c.number, undefined, 'ja', code).catch(() => [] as CatalogCard[])
+          const t = twin.find((x) => x.images.large)
+          if (t && !/promo/i.test(t.set.name)) found.set(c.id, t.images)
+        }
+        if (found.size) break
+      }
+    }),
+  )
+  return cards.map((c) => (found.has(c.id) ? { ...c, images: found.get(c.id)! } : c))
 }
 
 /** The English name of a Japanese set, from the TCGplayer listing with the same code. */
