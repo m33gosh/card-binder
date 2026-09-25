@@ -10,3 +10,5 @@ android
 pokemon_card_pics
 import/
 supabase/.temp/
+public/version.json
+src/version.ts

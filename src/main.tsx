@@ -4,6 +4,9 @@ import { HashRouter } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import App from './App'
 import './styles.css'
+import { reloadIfStale } from './lib/freshness'
+
+void reloadIfStale()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
