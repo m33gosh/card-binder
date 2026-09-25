@@ -40,7 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(() => {
     // Google can send us back with an error instead of a code
     const params = new URLSearchParams(window.location.search)
-    const desc = params.get('error_description') ?? params.get('error')
+    const hash = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''))
+    const desc = params.get('error_description') ?? params.get('error') ?? hash.get('error_description') ?? hash.get('error')
     return desc ? desc.replace(/\+/g, ' ') : null
   })
 
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (cancelled) return
       if (error) setAuthError(error.message)
-      else if (!data.session && window.location.search.includes('code=')) setAuthError('Google sent us back, but the sign-in could not be completed. Please try again.')
+      else if (!data.session && /code=|access_token=/.test(window.location.search + window.location.hash)) setAuthError('Google sent us back, but the sign-in could not be completed. Please try again.')
       setSession(data.session)
       await loadProfile(data.session?.user.id)
       setLoading(false)

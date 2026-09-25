@@ -15,7 +15,10 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      // implicit: the session comes back in the URL itself, so it works even
+      // when iOS hands the Google result to a different browser context
+      // (home-screen app → in-app browser), which broke the PKCE hand-off
+      flowType: 'implicit',
     },
   },
 )
