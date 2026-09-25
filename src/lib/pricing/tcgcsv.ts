@@ -16,28 +16,44 @@ interface PriceRow { productId: number; subTypeName: string; marketPrice?: numbe
 
 const memo = new Map<string, Promise<unknown>>()
 
+// Only the small group lists go in browser storage. Product and price lists
+// run to hundreds of kilobytes each; on iPad Safari they filled the storage
+// quota, after which nothing else could be saved — including the login.
+const persistable = (path: string) => path.endsWith('/groups')
+try {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('card-binder:mirror:') && !persistable(key.slice('card-binder:mirror:'.length))) localStorage.removeItem(key)
+  }
+} catch {
+  /* no storage */
+}
+
 async function mirror<T>(path: string): Promise<T> {
   const key = `card-binder:mirror:${path}`
   if (!memo.has(key)) {
     memo.set(
       key,
       (async () => {
-        try {
-          const raw = localStorage.getItem(key)
-          if (raw) {
-            const { at, data } = JSON.parse(raw) as { at: number; data: T }
-            if (Date.now() - at < 6 * 3600 * 1000) return data
+        if (persistable(path)) {
+          try {
+            const raw = localStorage.getItem(key)
+            if (raw) {
+              const { at, data } = JSON.parse(raw) as { at: number; data: T }
+              if (Date.now() - at < 6 * 3600 * 1000) return data
+            }
+          } catch {
+            /* no storage */
           }
-        } catch {
-          /* no storage */
         }
         const { data, error } = await supabase.functions.invoke<{ results?: T; error?: string }>('catalog-mirror', { body: { path } })
         if (error) throw new Error(error.message)
         if (!data?.results) throw new Error(data?.error ?? 'Mirror unavailable')
-        try {
-          localStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data.results }))
-        } catch {
-          /* ignore */
+        if (persistable(path)) {
+          try {
+            localStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data.results }))
+          } catch {
+            /* ignore */
+          }
         }
         return data.results
       })(),
