@@ -176,6 +176,28 @@ pages/           Collection, CardDetail, AddCards, People, Login, Pending
   `src/lib/pricing/tcgdexSetCodes.json`; run `node scripts/update-set-codes.mjs`
   now and then to pick up new sets.
 
+## A second collection: squishes
+
+Not everyone in the family collects cards. On the People page an admin sets
+each person's collection: **Pokémon cards** or **Squishes**. Someone on
+squishes gets a "Squish Shelf" instead of a binder: a photo, name, brand
+(Squishmallows, NeeDoh, anything), what it is, squad, size, colour, where and
+when it came from, price paid, a "worth about" value, condition, a favourite
+mark, notes, and a wishlist. Same sign-in, same private-per-owner rules, same
+photo storage.
+
+Pictures can come from a photo, from the Squishmallows fan wiki (for that
+brand, searched by name, free and browser-callable), or from any store page:
+paste the link and the `page-image` Edge Function reads the page's main
+picture server-side. Deploy that function like the others:
+
+```bash
+npx supabase functions deploy page-image --project-ref YOUR-PROJECT-REF
+```
+
+Migration `0008` adds the `squishes` table and the per-person collection
+setting.
+
 ## Bulk import from a folder of photos
 
 `scripts/bulk-import.mjs` loads many cards at once from a JSON manifest plus a
