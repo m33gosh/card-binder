@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     }
   }
   if (!image) return json({ error: 'No picture found on that page.' }, 404)
-  const absolute = new URL(image, target).toString()
+  const absolute = new URL(image.replace(/&amp;/g, '&'), target).toString()
   const title = /<title[^>]*>([^<]{1,200})/i.exec(html)?.[1]?.trim()
   return json({ image: absolute, title })
 })
