@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth, type Profile } from '@/auth/AuthProvider'
 import { ROLES, ROLE_LABELS, type Role } from '@/auth/permissions'
-import { listProfiles, setRole } from '@/features/admin/api'
+import { listProfiles, setCollection, setRole } from '@/features/admin/api'
 import { Spinner } from '@/components/Spinner'
 
 export function PeoplePage() {
@@ -44,11 +44,25 @@ export function PeoplePage() {
             <select className="select" value={p.role} onChange={(e) => void change(p, e.target.value as Role)} aria-label={`Role for ${p.email}`}>
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
+            <select
+              className="select"
+              value={p.collection ?? 'cards'}
+              aria-label={`Collection for ${p.email}`}
+              onChange={(e) => {
+                const collection = e.target.value as 'cards' | 'squishes'
+                setCollection(p.id, collection)
+                  .then(() => setPeople((list) => list?.map((x) => (x.id === p.id ? { ...x, collection } : x)) ?? null))
+                  .catch((err: Error) => setError(err.message))
+              }}
+            >
+              <option value="cards">Pokémon cards</option>
+              <option value="squishes">Squishes</option>
+            </select>
           </div>
         ))}
       </div>
       <div className="panel small muted">
-        <p><strong>Has a binder</strong> can fill and manage their own binder. <strong>Runs the app</strong> can also approve people here. Nobody can see anyone else's cards.</p>
+        <p><strong>Has a binder</strong> can fill and manage their own collection. <strong>Runs the app</strong> can also approve people here. Nobody can see anyone else's collection. The second choice picks what a person collects: Pokémon cards or squishes.</p>
         <p style={{ margin: 0 }}>The same rules are enforced by the database, not just hidden in the app.</p>
       </div>
     </div>

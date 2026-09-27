@@ -10,6 +10,8 @@ export interface Profile {
   display_name: string | null
   avatar_url: string | null
   role: Role
+  /** which collection this person's home screen opens on */
+  collection: 'cards' | 'squishes'
   created_at: string
 }
 

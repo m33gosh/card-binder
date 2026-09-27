@@ -8,22 +8,29 @@ const iconUrl = `${import.meta.env.BASE_URL}icons/icon.svg`
 
 export function Layout({ children }: { children: ReactNode }) {
   const { profile, role, signOut } = useAuth()
-  const links = [
-    { to: '/', label: 'Binder', icon: <BinderIcon />, show: true },
-    { to: '/add', label: 'Add cards', icon: <AddIcon />, show: can(role, 'card:create') },
-    { to: '/people', label: 'People', icon: <PeopleIcon />, show: can(role, 'users:manage') },
-  ].filter((l) => l.show)
+  const squishes = profile?.collection === 'squishes'
+  const links = squishes
+    ? [
+        { to: '/squishes', label: 'Squishes', icon: <BinderIcon />, show: true },
+        { to: '/squishes/new', label: 'Add', icon: <AddIcon />, show: can(role, 'card:create') },
+        { to: '/people', label: 'People', icon: <PeopleIcon />, show: can(role, 'users:manage') },
+      ].filter((l) => l.show)
+    : [
+        { to: '/', label: 'Binder', icon: <BinderIcon />, show: true },
+        { to: '/add', label: 'Add cards', icon: <AddIcon />, show: can(role, 'card:create') },
+        { to: '/people', label: 'People', icon: <PeopleIcon />, show: can(role, 'users:manage') },
+      ].filter((l) => l.show)
 
   return (
     <div className="shell">
       <header className="topbar">
-        <NavLink to="/" className="brand">
+        <NavLink to={squishes ? '/squishes' : '/'} className="brand">
           <img src={iconUrl} alt="" />
-          Card Binder
+          {squishes ? 'Squish Shelf' : 'Card Binder'}
         </NavLink>
         <nav>
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.to === '/'}>{l.label}</NavLink>
+            <NavLink key={l.to} to={l.to} end={l.to === '/' || l.to === '/squishes'}>{l.label}</NavLink>
           ))}
         </nav>
         <div className="spacer" />
@@ -36,7 +43,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <main className="main">{children}</main>
       <nav className="tabbar">
         {links.map((l) => (
-          <NavLink key={l.to} to={l.to} end={l.to === '/'}>
+          <NavLink key={l.to} to={l.to} end={l.to === '/' || l.to === '/squishes'}>
             {l.icon}
             {l.label}
           </NavLink>

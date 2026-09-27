@@ -12,3 +12,8 @@ export async function setRole(userId: string, role: Role): Promise<void> {
   const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
   if (error) throw error
 }
+
+export async function setCollection(userId: string, collection: 'cards' | 'squishes'): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ collection }).eq('id', userId)
+  if (error) throw error
+}

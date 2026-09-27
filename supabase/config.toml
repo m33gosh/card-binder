@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.catalog-mirror]
 verify_jwt = true
+
+[functions.page-image]
+verify_jwt = true
