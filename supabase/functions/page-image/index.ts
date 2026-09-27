@@ -49,20 +49,46 @@ Deno.serve(async (req) => {
 
   let html = ''
   try {
-    const res = await fetch(target, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CardBinder/1.0; +https://github.com/m33gosh/card-binder)', Accept: 'text/html' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) return json({ error: `That page answered ${res.status}.` }, 502)
-    html = (await res.text()).slice(0, 600_000)
+    const headers = { 'User-Agent': 'Mozilla/5.0 (compatible; CardBinder/1.0; +https://github.com/m33gosh/card-binder)', Accept: 'text/html,image/*' }
+    let res = await fetch(target, { headers, redirect: 'follow', signal: AbortSignal.timeout(12000) })
+    if (res.status === 403 || res.status === 406) {
+      // some shops only talk to browsers
+      res = await fetch(target, { headers: { ...headers, 'User-Agent': 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' }, redirect: 'follow', signal: AbortSignal.timeout(12000) })
+    }
+    if (!res.ok) return json({ error: `That page answered ${res.status}. Try the product's own page, or a link to the picture itself.` }, 502)
+    // a link straight to a picture is fine as it is
+    if ((res.headers.get('content-type') ?? '').startsWith('image/')) return json({ image: res.url || target.toString(), title: target.pathname.split('/').pop() })
+    html = (await res.text()).slice(0, 1_500_000)
   } catch {
-    return json({ error: 'That page could not be read.' }, 502)
+    return json({ error: 'That page took too long or could not be read.' }, 502)
   }
 
+  // shops describe the product for search engines: the most reliable product photo
+  let image: string | undefined
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(m[1]) as unknown
+      const nodes = Array.isArray(data) ? data : [(data as { '@graph'?: unknown[] })['@graph'] ?? data].flat()
+      for (const node of nodes as Array<Record<string, unknown>>) {
+        if (node && (node['@type'] === 'Product' || (Array.isArray(node['@type']) && node['@type'].includes('Product')))) {
+          const img = node.image
+          const first = Array.isArray(img) ? img[0] : img
+          const url = typeof first === 'string' ? first : (first as { url?: string } | undefined)?.url
+          if (url) {
+            image = url
+            break
+          }
+        }
+      }
+      if (image) break
+    } catch {
+      /* not JSON */
+    }
+  }
   const metas = html.match(/<meta[^>]+>/gi) ?? []
   const pick = (prop: string) => metas.map((m) => (attr(m, 'property') === prop || attr(m, 'name') === prop ? attr(m, 'content') : undefined)).find(Boolean)
-  let image = pick('og:image') ?? pick('og:image:secure_url') ?? pick('twitter:image') ?? pick('twitter:image:src')
+  // product:image and twitter:image are usually the product; og:image is often the shop's generic share picture
+  image ??= pick('product:image') ?? pick('twitter:image') ?? pick('twitter:image:src') ?? pick('og:image') ?? pick('og:image:secure_url')
   if (!image) {
     // first <img> that looks like a product shot, not an icon
     for (const tag of html.match(/<img[^>]+>/gi) ?? []) {
