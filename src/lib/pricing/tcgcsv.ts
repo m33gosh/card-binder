@@ -110,7 +110,7 @@ export function productToCard(p: Product, group: Group, category: number, prices
   return {
     id: `tcgp-${category}-${group.groupId}-${p.productId}`,
     language: LANG_OF[String(category)] ?? 'en',
-    name: p.name.replace(/\s+-\s+[A-Za-z]*\d{1,3}\/\d{1,3}.*$/, '').replace(/\s*\[.*\]$/, '').trim(),
+    name: p.name.replace(/\s+-\s+[A-Za-z]*\d{1,3}(\/\d{1,3})?(\s*\(.*\))?.*$/, '').replace(/\s*\[.*\]$/, '').trim(),
     number: strip(num.trim()),
     rarity: field(p, 'Rarity'),
     set: { id: `tcgp-${category}-${group.groupId}`, name: group.name.replace(/^[A-Za-z0-9.-]{1,8}:\s*/, ''), printedTotal: total ? Number(strip(total.trim())) : undefined },
@@ -135,6 +135,15 @@ async function groupCards(lang: CatalogLang, group: Group): Promise<CatalogCard[
 export function groupCode(group: Group): string | undefined {
   const m = /^([A-Za-z0-9.-]{1,8}):\s/.exec(group.name) ?? /^([A-Za-z0-9-]{2,6})\s+Promo/i.exec(group.name)
   return m?.[1] ?? group.abbreviation
+}
+
+/** The main catalog's promo sets and the listing groups that hold the same cards. */
+export const PROMO_GROUPS: Record<string, RegExp> = {
+  mep: /mega evolution promo/i,
+  svp: /scarlet & violet promo/i,
+  swshp: /sword & shield promo/i,
+  smp: /sun & moon promo/i,
+  xyp: /^xy.*promo/i,
 }
 
 /** The main catalog's promo set ids versus the codes printed on the cards and used in listings. */
@@ -189,6 +198,17 @@ export const tcgplayerMirror = {
     })
     const out: CatalogCard[] = []
     for (const g of groups.slice(0, 3)) out.push(...(await groupCards(lang, g)))
+    return out
+  },
+
+  /** Promo cards: the listing group for a catalog promo set, matched by number. */
+  async findInPromoGroup(setId: string, number: string, lang: CatalogLang): Promise<CatalogCard[]> {
+    const re = PROMO_GROUPS[setId.toLowerCase()]
+    if (!re) return []
+    const n = strip(number).toUpperCase()
+    const groups = (await mirror<Group[]>(`${CATEGORY[lang]}/groups`)).filter((g) => re.test(g.name))
+    const out: CatalogCard[] = []
+    for (const g of groups.slice(0, 2)) for (const c of await groupCards(lang, g)) if (c.number.toUpperCase() === n) out.push(c)
     return out
   },
 

@@ -58,6 +58,10 @@ export const pricing: PricingSource = {
         return merge(card, t, priced)
       }
     }
+    // promo sets: the listing's promo group, matched by number and name
+    for (const t of await tcgplayerMirror.findInPromoGroup(card.set.id, card.number, card.language).catch(() => [] as CatalogCard[])) {
+      if (await sameCard(card, t)) return merge(card, t, priced)
+    }
     // some small sets are numbered differently by the two catalogs (the 30th
     // Classic Collection reprints keep their original numbers): match by name
     // within the listing set of the same name

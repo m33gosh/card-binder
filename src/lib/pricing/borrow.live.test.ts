@@ -15,7 +15,7 @@ describe.skipIf(!LIVE)('prices borrowed from the listings', () => {
       const { supabase } = await import('../supabase')
       await supabase.auth.signInWithPassword({ email, password })
       const { pricing } = await import('./index')
-      for (const id of ['30th-021', '30th-092', '30th-c-018']) {
+      for (const id of ['30th-021', '30th-092', '30th-c-018', 'mep-078']) {
         const card = await pricing.getCard(id, 'en')
         console.log(id, card?.name, card?.number, 'set', card?.set.id, card?.set.printedTotal, 'prices', JSON.stringify(card?.prices), card?.priceSource)
       }
@@ -24,6 +24,8 @@ describe.skipIf(!LIVE)('prices borrowed from the listings', () => {
       const gengar = await pricing.getCard('30th-c-018', 'en')
       expect(Object.keys(gengar?.prices ?? {}).length).toBeGreaterThan(0)
       expect(gengar?.images.large).toBeTruthy()
+      const toxel = await pricing.getCard('mep-078', 'en')
+      expect(toxel?.images.large).toContain('tcgplayer')
     } finally {
       await admin.auth.admin.deleteUser(created.user.id)
     }

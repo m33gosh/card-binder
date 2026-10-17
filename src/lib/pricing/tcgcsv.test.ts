@@ -28,6 +28,11 @@ describe('tcgplayer mirror mapping', () => {
     expect(card.prices).toEqual({ holofoil: 0.76 })
     expect(card.images.large).toContain('696676_400w.jpg')
   })
+  it('strips promo number suffixes from names', () => {
+    const card = productToCard({ productId: 9, name: 'Toxel - 078 (Cosmos Holo)', imageUrl: 'https://x/9_200w.jpg', extendedData: [{ name: 'Number', value: '078' }, { name: 'HP', value: '70' }] }, { groupId: 24451, name: 'ME: Mega Evolution Promo' }, 3, [])!
+    expect(card.name).toBe('Toxel')
+    expect(card.number).toBe('78')
+  })
   it('skips sealed products and stickers', () => {
     expect(productToCard({ productId: 1, name: '30th Celebration Booster Pack', extendedData: [] }, group, 3, [])).toBeNull()
   })
