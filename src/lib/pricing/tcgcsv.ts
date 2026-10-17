@@ -174,6 +174,24 @@ export const tcgplayerMirror = {
     return out.slice(0, 24)
   },
 
+  /**
+   * Every card in the listing sets whose name resembles a catalog set name,
+   * for sets where the two catalogs number cards differently (the 30th
+   * Classic Collection reprints carry their original numbers).
+   */
+  async findInSetByName(setName: string, lang: CatalogLang): Promise<CatalogCard[]> {
+    const simplify = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+    const wanted = simplify(setName.replace(/^[A-Za-z0-9.-]{1,8}:\s*/, ''))
+    const tail = wanted.split(' ').slice(-2).join(' ')
+    const groups = (await mirror<Group[]>(`${CATEGORY[lang]}/groups`)).filter((g) => {
+      const n = simplify(g.name)
+      return n.includes(wanted) || (tail.length >= 8 && n.includes(tail))
+    })
+    const out: CatalogCard[] = []
+    for (const g of groups.slice(0, 3)) out.push(...(await groupCards(lang, g)))
+    return out
+  },
+
   async getCard(id: string): Promise<CatalogCard | null> {
     const m = /^tcgp-(\d+)-(\d+)-(\d+)$/.exec(id)
     if (!m) return null

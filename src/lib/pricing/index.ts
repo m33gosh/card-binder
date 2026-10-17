@@ -9,7 +9,8 @@ export { tcgplayerMirror }
 /**
  * The main catalog (TCGdex) answers first. The TCGplayer mirror fills in what
  * it lacks: brand-new sets, any card whose id starts with "tcgp-", and
- * pictures for cards the main catalog hasn't photographed yet.
+ * pictures, prices and English names for cards the main catalog has only
+ * partly recorded.
  */
 export const pricing: PricingSource = {
   name: tcgdexSource.name,
@@ -36,6 +37,7 @@ export const pricing: PricingSource = {
     }
     const priced = Object.keys(card.prices).length > 0
     if (card.images.large && priced && (card.language !== 'ja' || card.nameAlt)) return card
+
     // no picture, no price, or still no English name: the matching TCGplayer listing has them
     const total = card.set.printedTotal != null ? String(card.set.printedTotal) : undefined
     const attempts: Array<string | undefined> = [...codeAliases(card.set.id), undefined]
@@ -53,20 +55,31 @@ export const pricing: PricingSource = {
           if (card.supertype !== 'Pokémon') continue
           if (card.set.printedTotal != null && t.set.printedTotal != null && card.set.printedTotal !== t.set.printedTotal) continue
         }
-        return {
-          ...card,
-          images: card.images.large ? card.images : t.images,
-          nameAlt: card.nameAlt ?? (card.language === 'ja' && t.name !== card.name ? t.name : undefined),
-          // brand-new sets reach the main catalog before its prices do
-          ...(priced ? {} : { prices: t.prices, priceSource: t.priceSource, priceUpdatedAt: t.priceUpdatedAt }),
-        }
+        return merge(card, t, priced)
       }
+    }
+    // some small sets are numbered differently by the two catalogs (the 30th
+    // Classic Collection reprints keep their original numbers): match by name
+    // within the listing set of the same name
+    for (const t of await tcgplayerMirror.findInSetByName(card.set.name, card.language).catch(() => [] as CatalogCard[])) {
+      if (await sameCard(card, t)) return merge(card, t, priced)
     }
     return card
   },
 
   listSets: (lang) => tcgdexSource.listSets(lang),
   findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
+}
+
+/** The main-catalog card, filled in from its listing twin. */
+function merge(card: CatalogCard, t: CatalogCard, priced: boolean): CatalogCard {
+  return {
+    ...card,
+    images: card.images.large ? card.images : t.images,
+    nameAlt: card.nameAlt ?? (card.language === 'ja' && t.name !== card.name ? t.name : undefined),
+    // brand-new sets reach the main catalog before its prices do
+    ...(priced ? {} : { prices: t.prices, priceSource: t.priceSource, priceUpdatedAt: t.priceUpdatedAt }),
+  }
 }
 
 /**
