@@ -17,12 +17,20 @@ const range = (from: number, to: number) => Array.from({ length: to - from + 1 }
 /** Runs worth chasing that aren't simply "the whole set". */
 export const CHASES: Chase[] = [
   {
+    key: '30th-pikachu-ja',
+    title: '30th Celebration Pikachu (Japanese)',
+    setId: 'tcgp-85-24721',
+    language: 'ja',
+    numbers: range(17, 46),
+    note: 'MEGA Expansion 30th Celebration: one Pikachu in every pack, thirty different ones, numbers 017 to 046.',
+  },
+  {
     key: '30th-pikachu',
-    title: '30th Celebration Pikachu',
+    title: '30th Celebration Pikachu (English)',
     setId: '30th',
     language: 'en',
     numbers: range(23, 52),
-    note: 'One Pikachu in every pack, thirty different ones, numbers 023 to 052.',
+    note: 'The English set: thirty different Pikachu, numbers 023 to 052.',
   },
 ]
 
