@@ -18,9 +18,12 @@ describe('chase lists', () => {
     expect(slots.map((s) => s.quantity)).toEqual([0, 1, 2, 0])
     expect(slots[1].card?.id).toBe('30th-27')
   })
-  it('counts distinct numbers held per set', () => {
-    const sets = setsInBinder(rows)
-    expect(sets.find((s) => s.setId === '30th')?.held).toBe(2)
-    expect(sets.find((s) => s.setId === 'tcgp-85-24721')?.held).toBe(1)
+  it('counts distinct numbers held per set, merging catalog and listing ids of one set', () => {
+    const more = [...rows, { ...row('Zekrom', '56', 'tcgp-3-24722', 'tcgp-3-24722-1'), set_name: '30th Celebration' }, { ...rows[0], set_name: '30th Celebration' }, { ...rows[1], set_name: '30th Celebration' }]
+    const sets = setsInBinder(more)
+    const thirtieth = sets.find((s) => s.name === '30th Celebration')!
+    expect(thirtieth.setIds).toEqual(['30th', 'tcgp-3-24722'])
+    expect(thirtieth.held).toBe(3)
+    expect(rowInSet(more[4], thirtieth.setIds)).toBe(true)
   })
 })

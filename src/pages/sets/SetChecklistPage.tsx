@@ -12,6 +12,8 @@ export function SetChecklistPage() {
   const { setId = '' } = useParams()
   const [params] = useSearchParams()
   const chase = CHASES.find((c) => c.key === params.get('chase') && c.setId === setId) ?? null
+  // every id this set goes by: the chase's, or the ones the Sets page found
+  const ids = useMemo(() => [setId, ...(chase?.alsoIds ?? []), ...(params.get('also')?.split(',').filter(Boolean) ?? [])], [setId, chase, params])
   const [rows, setRows] = useState<CardRow[] | null>(null)
   const [cards, setCards] = useState<SetCardBrief[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -31,13 +33,13 @@ export function SetChecklistPage() {
     }
   }, [setId, chase?.language])
 
-  const slots = useMemo<Slot[]>(() => (rows && cards ? buildSlots(cards, rows, setId, chase?.numbers ?? []) : []), [rows, cards, setId, chase])
+  const slots = useMemo<Slot[]>(() => (rows && cards ? buildSlots(cards, rows, ids, chase?.numbers ?? []) : []), [rows, cards, ids, chase])
   if (error) return <div className="notice error">{error}</div>
   if (!rows || !cards) return <Spinner />
 
   const have = slots.filter((s) => s.quantity > 0)
   const need = slots.filter((s) => s.quantity === 0)
-  const title = chase?.title ?? rows.find((r) => r.set_id === setId)?.set_name ?? setId
+  const title = chase?.title ?? rows.find((r) => ids.includes(r.set_id ?? ''))?.set_name ?? setId
   const shown = only === 'need' ? need : only === 'have' ? have : slots
   const dupes = have.reduce((n, s) => n + Math.max(0, s.quantity - 1), 0)
 

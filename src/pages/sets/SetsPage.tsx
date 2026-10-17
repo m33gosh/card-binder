@@ -25,8 +25,9 @@ export function SetsPage() {
       <h2>Chasing</h2>
       <div className="set-list">
         {CHASES.map((c) => {
-          const held = new Set(rows.filter((r) => rowInSet(r, c.setId)).map((r) => strip(r.card_number ?? ''))).size
-          const inRun = new Set(rows.filter((r) => rowInSet(r, c.setId) && c.numbers.map(strip).includes(strip(r.card_number ?? ''))).map((r) => strip(r.card_number ?? ''))).size
+          const ids = [c.setId, ...(c.alsoIds ?? [])]
+          const held = new Set(rows.filter((r) => rowInSet(r, ids)).map((r) => strip(r.card_number ?? ''))).size
+          const inRun = new Set(rows.filter((r) => rowInSet(r, ids) && c.numbers.map(strip).includes(strip(r.card_number ?? ''))).map((r) => strip(r.card_number ?? ''))).size
           return (
             <Link key={c.key} to={`/sets/${encodeURIComponent(c.setId)}?chase=${c.key}`} className="set-row">
               <div>
@@ -46,7 +47,7 @@ export function SetsPage() {
       {sets.length === 0 && <p className="muted">Nothing yet. Add some cards and their sets show up here.</p>}
       <div className="set-list">
         {sets.map((s) => (
-          <Link key={s.setId} to={`/sets/${encodeURIComponent(s.setId)}`} className="set-row">
+          <Link key={s.setIds.join('+')} to={`/sets/${encodeURIComponent(s.setIds[0])}${s.setIds.length > 1 ? `?also=${encodeURIComponent(s.setIds.slice(1).join(','))}` : ''}`} className="set-row">
             <div>
               <strong>{s.name}</strong>
               {s.language === 'ja' && <span className="small muted"> · Japanese</span>}
