@@ -34,8 +34,9 @@ export const pricing: PricingSource = {
       const species = await englishSpeciesNameByDex(card.dexIds[0]).catch(() => null)
       if (species) card = { ...card, nameAlt: englishCardName(card.name, species) }
     }
-    if (card.images.large && (card.language !== 'ja' || card.nameAlt)) return card
-    // no picture yet, or still no English name: the matching TCGplayer listing has both
+    const priced = Object.keys(card.prices).length > 0
+    if (card.images.large && priced && (card.language !== 'ja' || card.nameAlt)) return card
+    // no picture, no price, or still no English name: the matching TCGplayer listing has them
     const total = card.set.printedTotal != null ? String(card.set.printedTotal) : undefined
     const attempts: Array<string | undefined> = [...codeAliases(card.set.id), undefined]
     for (const code of attempts) {
@@ -50,6 +51,8 @@ export const pricing: PricingSource = {
           ...card,
           images: card.images.large ? card.images : t.images,
           nameAlt: card.nameAlt ?? (card.language === 'ja' && t.name !== card.name ? t.name : undefined),
+          // brand-new sets reach the main catalog before its prices do
+          ...(priced ? {} : { prices: t.prices, priceSource: t.priceSource, priceUpdatedAt: t.priceUpdatedAt }),
         }
       }
     }
