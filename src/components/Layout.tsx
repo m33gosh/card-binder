@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { can } from '@/auth/permissions'
-import { AddIcon, BinderIcon, PeopleIcon } from './Icons'
+import { AddIcon, BinderIcon, PeopleIcon, SetsIcon } from './Icons'
 
 const iconUrl = `${import.meta.env.BASE_URL}icons/icon.svg`
 
@@ -18,6 +18,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { to: '/', label: 'Binder', icon: <BinderIcon />, show: true },
         { to: '/add', label: 'Add cards', icon: <AddIcon />, show: can(role, 'card:create') },
+        { to: '/sets', label: 'Sets', icon: <SetsIcon />, show: true },
         { to: '/people', label: 'People', icon: <PeopleIcon />, show: can(role, 'users:manage') },
       ].filter((l) => l.show)
 

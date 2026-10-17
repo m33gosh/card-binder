@@ -1,4 +1,4 @@
-import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type CatalogSet, type PricingSource, type Variant } from './types'
+import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type CatalogSet, type PricingSource, type SetCardBrief, type Variant } from './types'
 import { eurToUsdRate } from '../fx'
 import setCodes from './tcgdexSetCodes.json'
 
@@ -29,7 +29,7 @@ interface RestCard {
   }
 }
 interface BriefCard { id: string; localId: string; name: string; rarity?: string; image?: string; set: { id: string; name: string } }
-interface RestSet { id: string; name: string; releaseDate?: string; cardCount?: { official?: number; total?: number }; cards: Array<{ id: string; localId: string; name: string }> }
+interface RestSet { id: string; name: string; releaseDate?: string; cardCount?: { official?: number; total?: number }; cards: Array<{ id: string; localId: string; name: string; image?: string }> }
 
 async function withRetry<T>(run: () => Promise<T>, tries = 3): Promise<T> {
   let last: unknown
@@ -204,6 +204,13 @@ export const tcgdexSource: PricingSource = {
       setsMemo.en.catch(() => delete setsMemo.en)
     }
     return setsMemo.en
+  },
+
+  async listSetCards(setId, lang = 'en') {
+    const key = `${lang}:${setId}`
+    if (!setDetail.has(key)) setDetail.set(key, rest<RestSet>(`/sets/${encodeURIComponent(setId)}`, lang))
+    const set = await setDetail.get(key)!
+    return (set?.cards ?? []).map((c): SetCardBrief => ({ id: c.id, number: c.localId.replace(/^0+(?=\d)/, ''), name: c.name, image: c.image ? `${c.image}/low.webp` : '' }))
   },
 
   async findByNumber(number, setIds, lang = 'en') {

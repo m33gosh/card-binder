@@ -109,6 +109,11 @@ export const pokemonTcgSource: PricingSource = {
     return body.data ? toCatalogCard(body.data) : null
   },
 
+  async listSetCards(setId) {
+    const body = await request<{ data: ApiCard[] }>('/cards', { q: `set.id:${setId}`, pageSize: 250, orderBy: 'number', select: 'id,name,number,images' })
+    return (body.data ?? []).map((c) => ({ id: c.id, number: c.number, name: c.name, image: c.images.small }))
+  },
+
   async listSets() {
     const body = await request<{ data: CatalogSet[] }>('/sets', {
       orderBy: '-releaseDate',

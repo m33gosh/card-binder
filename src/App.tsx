@@ -14,6 +14,8 @@ import { SetupPage } from './pages/SetupPage'
 import { SquishListPage } from './pages/squishes/SquishListPage'
 import { SquishFormPage } from './pages/squishes/SquishFormPage'
 import { SquishDetailPage } from './pages/squishes/SquishDetailPage'
+import { SetsPage } from './pages/sets/SetsPage'
+import { SetChecklistPage } from './pages/sets/SetChecklistPage'
 
 function Require({ action, children }: { action: Action; children: React.ReactElement }) {
   const { role } = useAuth()
@@ -35,6 +37,8 @@ export default function App() {
         <Route path="/" element={squishes ? <Navigate to="/squishes" replace /> : <CollectionPage />} />
         <Route path="/cards/:id" element={<CardDetailPage />} />
         <Route path="/add" element={<Require action="card:create"><AddCardsPage /></Require>} />
+        <Route path="/sets" element={<SetsPage />} />
+        <Route path="/sets/:setId" element={<SetChecklistPage />} />
         <Route path="/squishes" element={<SquishListPage />} />
         <Route path="/squishes/new" element={<Require action="card:create"><SquishFormPage /></Require>} />
         <Route path="/squishes/:id" element={<SquishDetailPage />} />

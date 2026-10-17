@@ -73,6 +73,7 @@ export const pricing: PricingSource = {
 
   listSets: (lang) => tcgdexSource.listSets(lang),
   findByNumber: (number, setIds, lang) => tcgdexSource.findByNumber(number, setIds, lang),
+  listSetCards: (setId, lang) => (setId.startsWith('tcgp-') ? tcgplayerMirror.listSetCards(setId) : tcgdexSource.listSetCards(setId, lang)),
 }
 
 /** The main-catalog card, filled in from its listing twin. */

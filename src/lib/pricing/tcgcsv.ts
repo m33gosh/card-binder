@@ -3,7 +3,7 @@
 // and Japanese) with numbers, images and dollar prices, but no illustrator or
 // full card text, so the main catalog stays first and this fills the gaps.
 import { supabase } from '../supabase'
-import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type CatalogSet, type Variant } from './types'
+import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type CatalogSet, type SetCardBrief, type Variant } from './types'
 
 const CATEGORY: Record<CatalogLang, number> = { en: 3, ja: 85 }
 const LANG_OF: Record<string, CatalogLang> = { '3': 'en', '85': 'ja' }
@@ -210,6 +210,19 @@ export const tcgplayerMirror = {
     const out: CatalogCard[] = []
     for (const g of groups.slice(0, 2)) for (const c of await groupCards(lang, g)) if (c.number.toUpperCase() === n) out.push(c)
     return out
+  },
+
+  /** Every card in a listing set ("tcgp-3-24722"), in number order. */
+  async listSetCards(setId: string): Promise<SetCardBrief[]> {
+    const m = /^tcgp-(\d+)-(\d+)$/.exec(setId)
+    if (!m) return []
+    const lang = LANG_OF[m[1]] ?? 'en'
+    const groups = await mirror<Group[]>(`${m[1]}/groups`)
+    const group = groups.find((g) => g.groupId === Number(m[2]))
+    if (!group) return []
+    const cards = await groupCards(lang, group)
+    const key = (n: string) => (/^\d+$/.test(n) ? n.padStart(4, '0') : 'z' + n)
+    return cards.sort((a, b) => key(a.number).localeCompare(key(b.number))).map((c) => ({ id: c.id, number: c.number, name: c.name, image: c.images.small }))
   },
 
   async getCard(id: string): Promise<CatalogCard | null> {

@@ -176,6 +176,16 @@ pages/           Collection, CardDetail, AddCards, People, Login, Pending
   `src/lib/pricing/tcgdexSetCodes.json`; run `node scripts/update-set-codes.mjs`
   now and then to pick up new sets.
 
+## Sets and chase lists
+
+The **Sets** page shows what's being chased and how far along each set in the
+binder is. A chase list is a run of cards worth completing on its own (the
+first one is the thirty 30th Celebration Pikachu, numbers 023 to 052; add more
+in `src/features/sets/chase.ts`). Opening a set or chase shows every card in
+number order, marked Have or Need, with a "Still need" summary, spares counted
+for trading, and a filter for just the missing ones. Card lists come from the
+catalog, so brand-new sets appear as soon as it has them.
+
 ## A second collection: squishes
 
 Not everyone in the family collects cards. On the People page an admin sets

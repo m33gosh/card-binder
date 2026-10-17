@@ -92,6 +92,15 @@ export interface PricingSource {
   listSets(lang?: CatalogLang): Promise<CatalogSet[]>
   /** cards with this collector number in any of the given sets */
   findByNumber(number: string, setIds: string[], lang?: CatalogLang): Promise<CatalogCard[]>
+  /** every card printed in a set, in number order; brief (no prices) */
+  listSetCards(setId: string, lang?: CatalogLang): Promise<SetCardBrief[]>
+}
+
+export interface SetCardBrief {
+  id: string
+  number: string
+  name: string
+  image: string
 }
 
 export interface CatalogSet {
