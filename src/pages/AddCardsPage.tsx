@@ -163,9 +163,15 @@ export function AddCardsPage() {
           }
         }
         const image_path = await uploadCardImage(user.id, d.blob)
-        const catalog = d.match ? fieldsFromCatalog(d.match, d.variant) : {}
+        // a suggestion found by number is a lightweight record; fetch the full
+        // card (prices, picture, English name) through the combined catalog
+        let match = d.match
+        if (match && (Object.keys(match.prices).length === 0 || !match.images.large)) {
+          match = (await pricing.getCard(match.id, match.language).catch(() => null)) ?? match
+        }
+        const catalog = match ? fieldsFromCatalog(match, d.variant) : {}
         const created = await createCard(user.id, {
-          name: d.name.trim() || d.match!.name,
+          name: d.name.trim() || match!.name,
           set_name: null, set_id: null, card_number: null, rarity: null,
           api_card_id: null, api_image_url: null,
           market_price: null, price_currency: 'USD', price_source: null, price_updated_at: null,
@@ -177,7 +183,7 @@ export function AddCardsPage() {
           quantity: 1,
           notes: null,
         })
-        if (d.match) rows.set(d.match.id, created)
+        if (match) rows.set(match.id, created)
         setStep({ kind: 'saving', done: ++done, total: ready.length })
       }
       navigate('/', { state: { added: ready.length - merged, merged } })
