@@ -47,6 +47,12 @@ export const pricing: PricingSource = {
         // trainer or energy with the same number is the same card
         const sameSetNonPokemon = Boolean(code) && !/promo/i.test(t.set.name) && card.supertype !== 'Pokémon' && t.supertype === card.supertype
         if (!sameSetNonPokemon && !(await sameCard(card, t))) continue
+        // without a set code, only a Pokémon from a set of the same size is safe:
+        // "Fire Energy #10" exists in dozens of sets
+        if (!code) {
+          if (card.supertype !== 'Pokémon') continue
+          if (card.set.printedTotal != null && t.set.printedTotal != null && card.set.printedTotal !== t.set.printedTotal) continue
+        }
         return {
           ...card,
           images: card.images.large ? card.images : t.images,
