@@ -46,7 +46,11 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   unlimited: 'Unlimited',
 }
 
-export type CatalogLang = 'en' | 'ja'
+export type CatalogLang = 'en' | 'ja' | 'zh-tw' | 'zh-cn'
+
+export const LANG_LABELS: Record<CatalogLang, string> = { en: 'English', ja: 'Japanese', 'zh-tw': 'Chinese (Traditional)', 'zh-cn': 'Chinese (Simplified)' }
+export const LANG_BADGES: Record<CatalogLang, string> = { en: '', ja: 'JP', 'zh-tw': 'ZH', 'zh-cn': 'ZH' }
+export const isCatalogLang = (v: unknown): v is CatalogLang => v === 'en' || v === 'ja' || v === 'zh-tw' || v === 'zh-cn'
 
 export interface CatalogCard {
   id: string

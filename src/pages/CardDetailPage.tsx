@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthProvider'
 import { canEditCard } from '@/auth/permissions'
 import { deleteCard, fieldsFromCatalog, getCard, getPriceHistory, signImageUrls, updateCard } from '@/features/cards/api'
 import { CONDITION_LABELS, cardSubtitle, cardTitle, type CardRow, type Condition, type PricePoint } from '@/features/cards/types'
-import { VARIANT_LABELS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
+import { LANG_LABELS, VARIANT_LABELS, isCatalogLang, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
 import { CatalogSearch } from '@/components/CatalogSearch'
 import { PriceTag, money } from '@/components/PriceTag'
 import { Spinner } from '@/components/Spinner'
@@ -98,7 +98,7 @@ export function CardDetailPage() {
                 <dt>How many</dt><dd>{card.quantity}</dd>
                 <dt>Finish</dt><dd>{variantLabel(card.variant)}</dd>
                 <dt>Condition</dt><dd>{CONDITION_LABELS[card.condition]}</dd>
-                {card.language === 'ja' && <><dt>Language</dt><dd>Japanese</dd></>}
+                {card.language !== 'en' && <><dt>Language</dt><dd>{isCatalogLang(card.language) ? LANG_LABELS[card.language] : card.language}</dd></>}
                 {card.notes && <><dt>Notes</dt><dd>{card.notes}</dd></>}
                 <dt>Added</dt><dd>{new Date(card.created_at).toLocaleDateString()}</dd>
               </dl>
@@ -125,7 +125,7 @@ export function CardDetailPage() {
           {relinking && (
             <div className="panel" style={{ marginTop: 18 }}>
               <h3 style={{ marginBottom: 10 }}>Which card is it?</h3>
-              <CatalogSearch initialName={card.name} initialLang={card.language === 'ja' ? 'ja' : 'en'} selectedId={card.api_card_id} onSelect={(m) => void relink(m)} />
+              <CatalogSearch initialName={card.name} initialLang={isCatalogLang(card.language) ? card.language : 'en'} selectedId={card.api_card_id} onSelect={(m) => void relink(m)} />
             </div>
           )}
         </div>

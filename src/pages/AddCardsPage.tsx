@@ -10,7 +10,7 @@ import type { CardRow } from '@/features/cards/types'
 import { BinderCropper } from '@/features/import/BinderCropper'
 import { pickPhotos } from '@/lib/camera'
 import { DEFAULT_GRID, cropRegion, gridCells, loadImage, normalizeForUpload, toDecodableBlob, type GridSpec } from '@/lib/images'
-import { pickPrice, pricing, STANDARD_VARIANTS, variantLabel, type CatalogCard, type Variant } from '@/lib/pricing'
+import { pickPrice, pricing, STANDARD_VARIANTS, variantLabel, LANG_LABELS, type CatalogCard, type CatalogLang, type Variant } from '@/lib/pricing'
 import { identifyCard } from '@/lib/identify'
 import { looksNonEnglish } from '@/lib/cardNumber'
 
@@ -31,7 +31,7 @@ interface Draft {
   /** everything the reader saw, for when a suggestion is puzzling */
   readText: string | null
   /** which catalog the reader thinks this card belongs to */
-  readLang: 'en' | 'ja'
+  readLang: CatalogLang
 }
 
 type Step =
@@ -110,7 +110,7 @@ export function AddCardsPage() {
         try {
           const result = await identifyCard(d.blob)
           const readNumber = result.ref ? (result.ref.total ? `${result.ref.number}/${result.ref.total}` : result.ref.number) : null
-          const readLang = result.language === 'ja' || looksNonEnglish(result.text) ? 'ja' : 'en'
+          const readLang: CatalogLang = result.language !== 'en' ? result.language : looksNonEnglish(result.text) ? 'ja' : 'en'
           patchDraft(d.id, { reading: 'done', suggested: result.candidates[0] ?? null, readNumber, readName: result.name, readText: result.text || null, readLang })
         } catch {
           patchDraft(d.id, { reading: 'failed' })
@@ -339,7 +339,7 @@ function ReviewStep({ drafts, identifying, onIdentify, onIdentified, onConfirm, 
             {!d.match && d.suggested ? (
               <>
                 <div className="name">Is it {d.suggested.nameAlt ?? d.suggested.name}?</div>
-                <div className="meta small muted">{d.suggested.language === 'ja' && 'Japanese · '}{d.suggested.set.name} #{d.suggested.number}</div>
+                <div className="meta small muted">{d.suggested.language !== 'en' && `${LANG_LABELS[d.suggested.language]} · `}{d.suggested.set.name} #{d.suggested.number}</div>
                 <button className="btn primary" onClick={() => onConfirm(d.id)}>Yes, that's it</button>
                 <button className="btn" onClick={() => onIdentify(d.id)}>No, find it</button>
               </>

@@ -30,13 +30,15 @@ export const pricing: PricingSource = {
       const english = await englishSetName(card.set.id).catch(() => null)
       if (english) card = { ...card, set: { ...card.set, name: english } }
     }
-    // Japanese cards: work out the English name from the Pokédex number
-    if (card.language === 'ja' && !card.nameAlt && card.dexIds?.[0]) {
+    // Japanese and Chinese cards: work out the English name from the Pokédex number
+    if (card.language !== 'en' && !card.nameAlt && card.dexIds?.[0]) {
       const species = await englishSpeciesNameByDex(card.dexIds[0]).catch(() => null)
       if (species) card = { ...card, nameAlt: englishCardName(card.name, species) }
     }
     const priced = Object.keys(card.prices).length > 0
-    if (card.images.large && priced && (card.language !== 'ja' || card.nameAlt)) return card
+    if (card.images.large && priced && (card.language === 'en' || card.nameAlt)) return card
+    // the listings cover English and Japanese only
+    if (card.language !== 'en' && card.language !== 'ja') return card
 
     // no picture, no price, or still no English name: the matching TCGplayer listing has them
     const total = card.set.printedTotal != null ? String(card.set.printedTotal) : undefined

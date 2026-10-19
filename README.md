@@ -93,13 +93,17 @@ with its own icon, and "Add cards" opens the camera directly.
 - **One card at a time**: pick one or more photos with a single card each.
 - Cards you can't find in the catalog can be saved with just a name and matched
   later from the card's page.
-- **Japanese cards** are supported. The reader spots a Japanese set code
-  (like `SV4a`) in the corner, reads the card again in Japanese to confirm
-  the name, and looks it up in the catalog's Japanese data. Their prices come
-  from Cardmarket in euros, converted to dollars with the European Central
-  Bank's daily rate (free, from frankfurter.dev). In search, tick
-  **Japanese card** to look up Japanese sets by number; they show a JP badge
-  in the binder.
+- **Japanese and Chinese cards** are supported. When the English read finds
+  nothing but the corner shows a Japanese or Chinese set code, metric stats
+  or a Pokédex number, the reader reads the card again with script detection,
+  tells Japanese from Traditional and Simplified Chinese by the characters,
+  and looks the card up in that language's catalog data. English names come
+  from the Pokédex number. Their prices come from Cardmarket in euros,
+  converted to dollars with the European Central Bank's daily rate (free,
+  from frankfurter.dev). In search, pick the **Language** to look up those
+  sets by number or English name; they show a JP or ZH badge in the binder.
+  Simplified Chinese sets have no pictures in the catalog, so those cards
+  show the photo taken of them.
 - Adding a card you already have raises its count on the existing row instead
   of storing a second row and a second photo. The bulk importer does the same.
 

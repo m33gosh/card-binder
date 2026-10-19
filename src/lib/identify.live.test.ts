@@ -43,3 +43,19 @@ describe.skipIf(!LIVE)('identifyJapanese from a Pokédex number', () => {
     expect(result.candidates[0]?.name).toBe('ビードル')
   }, 60000)
 })
+
+describe.skipIf(!LIVE)('identifyNonEnglish on a Traditional Chinese read', () => {
+  it('finds the card from its set code and number, confirmed by the Chinese name', async () => {
+    const latin = 'HP 60 + NO.0315 FA 8 : 0.3m E: 2.0kg *512 10 B # 0×2 Illus. Tomomi Ozaki sv5K F 001/071 € ©2024 Pokemon/Nintendo/Creatures/GAME FREAK.'
+    const native = '基礎 毒薔薇 全國圖鑑No.0315 荊林寶可夢 身高：0.3m 體重：2.0kg 特性 毒刺 綠葉舞步 10 弱點 Illus. Tomomi Ozaki sv5K F 001/071'
+    const { identifyNonEnglish } = await import('./identify')
+    const { scriptLanguage } = await import('./cardNumber')
+    expect(scriptLanguage(native)).toBe('zh-tw')
+    const result = await identifyNonEnglish(latin, native, 'zh-tw')
+    expect(result.language).toBe('zh-tw')
+    expect(result.candidates[0]?.id).toBe('SV5K-001')
+    expect(result.candidates[0]?.name).toBe('毒薔薇')
+    expect(result.candidates[0]?.nameAlt).toBe('Roselia')
+    expect(result.candidates[0]?.prices.normal ?? 0).toBeGreaterThan(0)
+  }, 60000)
+})

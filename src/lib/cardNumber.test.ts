@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
+import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, scriptLanguage, looksLikeCardRef, nameCandidates, parseCardName, parseCardRef, type SetInfo } from './cardNumber'
 
 const codes = ['PBL', 'CRI', 'WHT', 'OBF', 'SVE']
 
@@ -91,5 +91,14 @@ describe('non-English cards', () => {
     expect(looksNonEnglish('BASIC Pikachu HP 60 NO. 025 Mouse Pokémon HT: 1\'4" WT: 13.2 lbs')).toBe(false)
     expect(dexNumberIn(read)).toBe(13)
     expect(dexNumberIn('全国図鑑No.0930 オリープポケモン')).toBe(930)
+  })
+})
+
+describe('scriptLanguage', () => {
+  it('tells Japanese, Traditional and Simplified Chinese apart', () => {
+    expect(scriptLanguage('2進化 オリーヴァ 全国図鑑NO.0930')).toBe('ja')
+    expect(scriptLanguage('基礎 毒薔薇 全國圖鑑No.0315 荊林寶可夢')).toBe('zh-tw')
+    expect(scriptLanguage('基础 毒蔷薇 全国图鉴No.0315 宝可梦')).toBe('zh-cn')
+    expect(scriptLanguage('BASIC Pikachu HP 60')).toBeNull()
   })
 })

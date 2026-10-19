@@ -5,7 +5,9 @@
 import { supabase } from '../supabase'
 import { normalizeVariant, parseDamage, type CatalogCard, type CatalogLang, type CatalogSet, type SetCardBrief, type Variant } from './types'
 
-const CATEGORY: Record<CatalogLang, number> = { en: 3, ja: 85 }
+// TCGplayer lists English and Japanese cards only
+const CATEGORY: Partial<Record<CatalogLang, number>> = { en: 3, ja: 85 }
+const category = (lang: CatalogLang): number | null => CATEGORY[lang] ?? null
 const LANG_OF: Record<string, CatalogLang> = { '3': 'en', '85': 'ja' }
 const RECENT_DAYS = 240
 const MAX_GROUPS = 24
@@ -79,7 +81,9 @@ export function orderGroups(groups: Group[], now = Date.now()): Group[] {
 }
 
 export async function recentGroups(lang: CatalogLang): Promise<Group[]> {
-  return orderGroups(await mirror<Group[]>(`${CATEGORY[lang]}/groups`))
+  const cat = category(lang)
+  if (cat == null) return []
+  return orderGroups(await mirror<Group[]>(`${cat}/groups`))
 }
 
 const field = (p: Product, name: string) => p.extendedData?.find((e) => e.name === name)?.value
@@ -126,7 +130,8 @@ export function productToCard(p: Product, group: Group, category: number, prices
 }
 
 async function groupCards(lang: CatalogLang, group: Group): Promise<CatalogCard[]> {
-  const cat = CATEGORY[lang]
+  const cat = category(lang)
+  if (cat == null) return []
   const [products, prices] = await Promise.all([mirror<Product[]>(`${cat}/${group.groupId}/products`), mirror<PriceRow[]>(`${cat}/${group.groupId}/prices`).catch(() => [] as PriceRow[])])
   return products.map((p) => productToCard(p, group, cat, prices)).filter((c): c is CatalogCard => c !== null)
 }
@@ -157,7 +162,9 @@ export const tcgplayerMirror = {
   async findByPrintedNumber(number: string, total: string | undefined, lang: CatalogLang, code?: string): Promise<CatalogCard[]> {
     const n = strip(number).toUpperCase()
     const groups = await recentGroups(lang)
-    const all = code ? await mirror<Group[]>(`${CATEGORY[lang]}/groups`) : []
+    const cat = category(lang)
+    if (cat == null) return []
+    const all = code ? await mirror<Group[]>(`${cat}/groups`) : []
     const byCode = code ? all.filter((g) => groupCode(g)?.toUpperCase() === code.toUpperCase()) : []
     const out: CatalogCard[] = []
     for (const g of byCode.length ? byCode : groups) {
@@ -192,7 +199,9 @@ export const tcgplayerMirror = {
     const simplify = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
     const wanted = simplify(setName.replace(/^[A-Za-z0-9.-]{1,8}:\s*/, ''))
     const tail = wanted.split(' ').slice(-2).join(' ')
-    const groups = (await mirror<Group[]>(`${CATEGORY[lang]}/groups`)).filter((g) => {
+    const cat = category(lang)
+    if (cat == null) return []
+    const groups = (await mirror<Group[]>(`${cat}/groups`)).filter((g) => {
       const n = simplify(g.name)
       return n.includes(wanted) || (tail.length >= 8 && n.includes(tail))
     })
@@ -206,7 +215,9 @@ export const tcgplayerMirror = {
     const re = PROMO_GROUPS[setId.toLowerCase()]
     if (!re) return []
     const n = strip(number).toUpperCase()
-    const groups = (await mirror<Group[]>(`${CATEGORY[lang]}/groups`)).filter((g) => re.test(g.name))
+    const cat = category(lang)
+    if (cat == null) return []
+    const groups = (await mirror<Group[]>(`${cat}/groups`)).filter((g) => re.test(g.name))
     const out: CatalogCard[] = []
     for (const g of groups.slice(0, 2)) for (const c of await groupCards(lang, g)) if (c.number.toUpperCase() === n) out.push(c)
     return out
@@ -237,7 +248,9 @@ export const tcgplayerMirror = {
 
   /** Every set the listings know for this language (not just recent ones). */
   async listSets(lang: CatalogLang): Promise<CatalogSet[]> {
-    const groups = await mirror<Group[]>(`${CATEGORY[lang]}/groups`)
-    return groups.map((g) => ({ id: `tcgp-${CATEGORY[lang]}-${g.groupId}`, name: g.name, releaseDate: g.publishedOn, ptcgoCode: groupCode(g) }))
+    const cat = category(lang)
+    if (cat == null) return []
+    const groups = await mirror<Group[]>(`${cat}/groups`)
+    return groups.map((g) => ({ id: `tcgp-${cat}-${g.groupId}`, name: g.name, releaseDate: g.publishedOn, ptcgoCode: groupCode(g) }))
   },
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { pricing, pickPrice, type CatalogCard, type CatalogLang } from '@/lib/pricing'
+import { pricing, pickPrice, LANG_LABELS, type CatalogCard, type CatalogLang } from '@/lib/pricing'
 import { looksLikeCardRef, parseCardRef } from '@/lib/cardNumber'
 import { lookupRef } from '@/lib/identify'
-import { japaneseSpeciesName } from '@/lib/pokeNames'
+import { speciesNameIn } from '@/lib/pokeNames'
 import { money } from './PriceTag'
 
 interface Props {
@@ -18,7 +18,7 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
   const [name, setName] = useState(initialName)
   const [number, setNumber] = useState(initialNumber)
   const [lang, setLang] = useState<CatalogLang>(initialLang)
-  /** when searching Japanese sets by an English name: what we translated it to */
+  /** when searching non-English sets by an English name: what we translated it to */
   const [translated, setTranslated] = useState<{ en: string; ja: string } | null>(null)
   const [results, setResults] = useState<CatalogCard[]>([])
   const [busy, setBusy] = useState(false)
@@ -52,18 +52,18 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
       try {
         // "72/84" in either box means: number 72 in a set of 84
         const ref = looksLikeCardRef(number) ? parseCardRef(number) : looksLikeCardRef(name) ? parseCardRef(name) : null
-        // Japanese sets have Japanese names; translate an English name first
+        // Japanese and Chinese sets have native names; translate an English name first
         let query = name
         setTranslated(null)
-        if (lang === 'ja' && /[A-Za-z]/.test(name)) {
-          const ja = await japaneseSpeciesName(name)
-          if (!ja) {
+        if (lang !== 'en' && /[A-Za-z]/.test(name)) {
+          const native = await speciesNameIn(name, lang)
+          if (!native) {
             setResults([])
-            setError(`No Japanese name found for "${name.trim()}". Try the number printed on the card, like 205/190.`)
+            setError(`No ${LANG_LABELS[lang]} name found for "${name.trim()}". Try the number printed on the card, like 205/190.`)
             return
           }
-          query = ja
-          setTranslated({ en: name.trim(), ja })
+          query = native
+          setTranslated({ en: name.trim(), ja: native })
         }
         if (ref && !query.trim()) setResults(await lookupRef(ref, lang))
         else if (ref) setResults((await pricing.search({ name: query, lang })).filter((c) => c.number === ref.number))
@@ -92,15 +92,17 @@ export function CatalogSearch({ initialName = '', initialNumber = '', initialLan
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <p className="small muted" style={{ margin: 0 }}>Fastest: the number printed bottom-left on the card, like <strong>57/191</strong>, on its own finds the exact card.</p>
         <label className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input type="checkbox" checked={lang === 'ja'} onChange={(e) => setLang(e.target.checked ? 'ja' : 'en')} />
-          Japanese card
+          Language
+          <select className="select" style={{ width: 'auto', minHeight: 36, padding: '4px 8px' }} value={lang} onChange={(e) => setLang(e.target.value as CatalogLang)}>
+            {(Object.keys(LANG_LABELS) as CatalogLang[]).map((l) => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
+          </select>
         </label>
       </div>
       <div className="row">
-        {lang === 'ja' && <p className="small muted" style={{ margin: 0 }}>Type the English Pokémon name, or the number as printed, like 205/190.</p>}
+        {lang !== 'en' && <p className="small muted" style={{ margin: 0 }}>Type the English Pokémon name, or the number as printed, like 205/190.</p>}
       </div>
       {error && <div className="notice error">{error}</div>}
-      {translated && !busy && <p className="small muted">Searching Japanese sets for <strong>{translated.ja}</strong> ({translated.en}).</p>}
+      {translated && !busy && <p className="small muted">Searching {LANG_LABELS[lang]} sets for <strong>{translated.ja}</strong> ({translated.en}).</p>}
       {busy && <p className="small muted">Searching…</p>}
       {!busy && name.trim().length >= 2 && results.length === 0 && !error && (
         <p className="small muted">Nothing matched. Check the spelling, or try just the first word.</p>

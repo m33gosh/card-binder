@@ -138,3 +138,17 @@ export function dexNumberIn(text: string): number | null {
   const n = Number(m[1])
   return n >= 1 && n <= 1100 ? n : null
 }
+
+/**
+ * Which non-English catalog a card belongs to, from text read in "auto" mode:
+ * kana means Japanese; every Chinese card prints 寶可夢 (Traditional) or 宝可梦
+ * (Simplified); failing that, any Han characters are taken as Traditional,
+ * the variant with the better catalog coverage.
+ */
+export function scriptLanguage(text: string): 'ja' | 'zh-tw' | 'zh-cn' | null {
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text)) return 'ja'
+  if (/宝可梦|进化|宝可/.test(text)) return 'zh-cn'
+  if (/寶可夢|進化|寶可/.test(text)) return 'zh-tw'
+  if (/\p{Script=Han}/u.test(text)) return 'zh-tw'
+  return null
+}

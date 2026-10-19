@@ -25,75 +25,61 @@ function readCache(): Record<string, string> {
   }
 }
 
-/** Japanese species name for an English card name, or null if PokéAPI doesn't know it. */
-export async function japaneseSpeciesName(english: string): Promise<string | null> {
+/** PokéAPI's language codes for the catalogs we use. */
+const POKEAPI_LANG: Record<string, string[]> = { ja: ['ja', 'ja-Hrkt'], 'zh-tw': ['zh-Hant'], 'zh-cn': ['zh-Hans'], en: ['en'] }
+
+async function speciesNames(slugOrDex: string | number): Promise<Array<{ name: string; language: { name: string } }> | null> {
+  try {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(String(slugOrDex))}`)
+    if (!res.ok) return null
+    return ((await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }).names ?? null
+  } catch {
+    return null
+  }
+}
+
+/** The species name in another language for an English card name, or null if PokéAPI doesn't know it. */
+export async function speciesNameIn(english: string, lang: string): Promise<string | null> {
   const slug = speciesSlug(english)
   if (!slug) return null
   const cache = readCache()
-  if (slug in cache) return cache[slug] || null
-  let ja: string | null = null
+  const key = `${lang}:${slug}`
+  if (key in cache) return cache[key] || null
+  const names = await speciesNames(slug)
+  const codes = POKEAPI_LANG[lang] ?? [lang]
+  const found = codes.map((c) => names?.find((n) => n.language.name === c)?.name).find(Boolean) ?? null
   try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${encodeURIComponent(slug)}`)
-    if (res.ok) {
-      const body = (await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }
-      ja = body.names?.find((n) => n.language.name === 'ja')?.name ?? body.names?.find((n) => n.language.name === 'ja-Hrkt')?.name ?? null
-    }
-  } catch {
-    return null
-  }
-  try {
-    localStorage.setItem(KEY, JSON.stringify({ ...cache, [slug]: ja ?? '' }))
+    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: found ?? '' }))
   } catch {
     /* ignore */
   }
-  return ja
+  return found
+}
+
+/** Japanese species name for an English card name. */
+export const japaneseSpeciesName = (english: string) => speciesNameIn(english, 'ja')
+
+/** Species name in a catalog language, by National Pokédex number. */
+export async function speciesNameByDexIn(dex: number, lang: string): Promise<string | null> {
+  const cache = readCache()
+  const key = `#${lang}:${dex}`
+  if (key in cache) return cache[key] || null
+  const names = await speciesNames(dex)
+  const codes = POKEAPI_LANG[lang] ?? [lang]
+  const found = codes.map((c) => names?.find((n) => n.language.name === c)?.name).find(Boolean) ?? null
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: found ?? '' }))
+  } catch {
+    /* ignore */
+  }
+  return found
 }
 
 /** Japanese species name by National Pokédex number. */
-export async function japaneseSpeciesNameByDex(dex: number): Promise<string | null> {
-  const cache = readCache()
-  const key = `#${dex}`
-  if (key in cache) return cache[key] || null
-  let ja: string | null = null
-  try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${dex}`)
-    if (res.ok) {
-      const body = (await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }
-      ja = body.names?.find((n) => n.language.name === 'ja')?.name ?? body.names?.find((n) => n.language.name === 'ja-Hrkt')?.name ?? null
-    }
-  } catch {
-    return null
-  }
-  try {
-    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: ja ?? '' }))
-  } catch {
-    /* ignore */
-  }
-  return ja
-}
+export const japaneseSpeciesNameByDex = (dex: number) => speciesNameByDexIn(dex, 'ja')
 
 /** English species name by National Pokédex number. */
-export async function englishSpeciesNameByDex(dex: number): Promise<string | null> {
-  const cache = readCache()
-  const key = `#en${dex}`
-  if (key in cache) return cache[key] || null
-  let en: string | null = null
-  try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${dex}`)
-    if (res.ok) {
-      const body = (await res.json()) as { names?: Array<{ name: string; language: { name: string } }> }
-      en = body.names?.find((n) => n.language.name === 'en')?.name ?? null
-    }
-  } catch {
-    return null
-  }
-  try {
-    localStorage.setItem(KEY, JSON.stringify({ ...cache, [key]: en ?? '' }))
-  } catch {
-    /* ignore */
-  }
-  return en
-}
+export const englishSpeciesNameByDex = (dex: number) => speciesNameByDexIn(dex, 'en')
 
 const JA_PREFIXES: Array<[RegExp, string]> = [
   [/^メガ/, 'Mega '],
@@ -101,9 +87,15 @@ const JA_PREFIXES: Array<[RegExp, string]> = [
   [/^ガラル/, 'Galarian '],
   [/^ヒスイ/, 'Hisuian '],
   [/^パルデア/, 'Paldean '],
+  // Chinese (Traditional and Simplified)
+  [/^超級/, 'Mega '],
+  [/^阿羅拉|^阿罗拉/, 'Alolan '],
+  [/^伽勒爾|^伽勒尔/, 'Galarian '],
+  [/^洗翠/, 'Hisuian '],
+  [/^帕底亞|^帕底亚/, 'Paldean '],
 ]
 
-/** "メガアブソルex" + species "Absol" → "Mega Absol ex". */
+/** "メガアブソルex" + species "Absol" → "Mega Absol ex"; "超級路卡利歐ex" → "Mega Lucario ex". */
 export function englishCardName(japaneseName: string, englishSpecies: string): string {
   let rest = japaneseName
   let prefix = ''

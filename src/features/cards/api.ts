@@ -1,5 +1,5 @@
 import { CARD_IMAGES_BUCKET, supabase } from '@/lib/supabase'
-import { pickPrice, pricing, totalAttackPower, type CatalogCard } from '@/lib/pricing'
+import { isCatalogLang, pickPrice, pricing, totalAttackPower, type CatalogCard } from '@/lib/pricing'
 import type { CardInsert, CardRow, CardUpdate, PricePoint } from './types'
 
 const SIGNED_URL_TTL = 60 * 60 // seconds
@@ -135,7 +135,7 @@ export async function refreshPrices(
   for (let i = 0; i < linked.length; i++) {
     const card = linked[i]
     try {
-      const match = await pricing.getCard(card.api_card_id!, card.language === 'ja' ? 'ja' : 'en')
+      const match = await pricing.getCard(card.api_card_id!, isCatalogLang(card.language) ? card.language : 'en')
       const quote = match ? pickPrice(match, card.variant, pricing.name) : null
       if (quote) {
         const row = await updateCard(card.id, {

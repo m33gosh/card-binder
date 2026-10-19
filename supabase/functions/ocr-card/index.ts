@@ -43,8 +43,9 @@ Deno.serve(async (req) => {
 
   const form = new FormData()
   form.append('base64Image', image)
-  // 'jpn' reads Japanese cards (names, attacks); 'eng' is the default
-  form.append('language', language === 'jpn' ? 'jpn' : 'eng')
+  // 'jpn' reads Japanese, 'auto' detects the script (Japanese or Chinese); 'eng' is the default
+  const allowed = ['eng', 'jpn', 'auto', 'chs', 'cht']
+  form.append('language', typeof language === 'string' && allowed.includes(language) ? language : 'eng')
   form.append('OCREngine', '2') // engine 2 read 68% of card numbers in testing; engine 1 managed 22%
   form.append('scale', 'true')
   form.append('isOverlayRequired', 'false')

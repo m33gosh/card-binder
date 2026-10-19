@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { cardTitle, type CardRow } from '@/features/cards/types'
+import { LANG_BADGES, LANG_LABELS, isCatalogLang } from '@/lib/pricing'
 import { PriceTag } from './PriceTag'
 
 export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: string; stat?: string }) {
@@ -10,7 +11,7 @@ export function CardTile({ card, photoUrl, stat }: { card: CardRow; photoUrl?: s
       <div className={`art${src ? '' : ' empty'}`}>
         {src ? <img src={src} alt={cardTitle(card)} loading="lazy" /> : <span>No photo</span>}
       </div>
-      {card.language === 'ja' && <span className="lang-badge" title="Japanese card">JP</span>}
+      {isCatalogLang(card.language) && card.language !== 'en' && <span className="lang-badge" title={`${LANG_LABELS[card.language]} card`}>{LANG_BADGES[card.language]}</span>}
       <div className="caption">
         <div className="name">{cardTitle(card)}</div>
         <PriceTag price={card.market_price} currency={card.price_currency} />

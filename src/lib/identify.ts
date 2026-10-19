@@ -3,8 +3,8 @@
 import { supabase } from './supabase'
 import { pricing, tcgplayerMirror, withListingPictures, type CatalogCard, type CatalogLang } from './pricing'
 import { loadImage } from './images'
-import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, nameCandidates, parseCardRef, type CardRef } from './cardNumber'
-import { japaneseSpeciesNameByDex } from './pokeNames'
+import { candidateSets, dexNumberIn, japaneseCodeIn, looksNonEnglish, nameCandidates, parseCardRef, scriptLanguage, type CardRef } from './cardNumber'
+import { speciesNameByDexIn } from './pokeNames'
 import { getSets } from './catalogSets'
 
 /**
@@ -34,7 +34,7 @@ function toDataUrl(blob: Blob): Promise<string> {
 }
 
 /** Ask the server to read the text on a card image. */
-export async function readCornerText(corner: Blob, language: 'eng' | 'jpn' = 'eng'): Promise<string> {
+export async function readCornerText(corner: Blob, language: 'eng' | 'jpn' | 'auto' = 'eng'): Promise<string> {
   const { data, error } = await supabase.functions.invoke<{ text?: string; error?: string }>('ocr-card', {
     body: { image: await toDataUrl(corner), language },
   })
@@ -74,77 +74,87 @@ export async function identifyCard(cardBlob: Blob): Promise<Identification> {
   const text = await readCornerText(image)
   const result = await identifyFromText(text)
   if (result.candidates.length > 0) return result
-  // nothing in the English catalog: a Japanese set code, metric stats or a
-  // Pokédex number in the corner mean this is probably a Japanese card
-  const [ja, en, mirrorJa] = await Promise.all([
+  // nothing in the English catalog: a Japanese/Chinese set code, metric stats
+  // or a Pokédex number in the corner mean this is not an English card
+  const [ja, zhTw, zhCn, en, mirrorJa] = await Promise.all([
     getSets('ja'),
+    getSets('zh-tw').catch(() => [] as Awaited<ReturnType<typeof getSets>>),
+    getSets('zh-cn').catch(() => [] as Awaited<ReturnType<typeof getSets>>),
     getSets('en'),
     tcgplayerMirror.listSets('ja').catch(() => [] as Awaited<ReturnType<typeof getSets>>),
   ])
-  const jaCodes = [...ja.map((s) => s.id), ...mirrorJa.map((s) => s.ptcgoCode ?? '')]
-  const jaCode = japaneseCodeIn(text, jaCodes, en.map((s) => s.ptcgoCode ?? ''))
-  let japanese = Boolean(jaCode) || looksNonEnglish(text)
+  const foreignCodes = [...ja, ...zhTw, ...zhCn].map((s) => s.id).concat(mirrorJa.map((s) => s.ptcgoCode ?? ''))
+  const foreignCode = japaneseCodeIn(text, foreignCodes, en.map((s) => s.ptcgoCode ?? ''))
+  let foreign = Boolean(foreignCode) || looksNonEnglish(text)
   // cards with no Pokédex line (VMAX, V, trainers) give no such hint: if the
   // printed number exists only in a recent Japanese set, that's the answer
-  if (!japanese && result.ref?.total) {
+  if (!foreign && result.ref?.total) {
     const jaHits = await tcgplayerMirror.findByPrintedNumber(result.ref.number, result.ref.total, 'ja').catch(() => [] as CatalogCard[])
     if (jaHits.length === 1) return { ...result, candidates: jaHits, name: jaHits[0].name, language: 'ja' }
-    japanese = jaHits.length > 1
+    foreign = jaHits.length > 1
   }
-  if (!japanese) return result
-  // a second read in Japanese gets the name and attacks for confirmation
-  const jaText = await readCornerText(image, 'jpn').catch(() => '')
-  return identifyJapanese(text, jaText)
+  if (!foreign) return result
+  // a second read with language detection gets the name and attacks, and
+  // tells Japanese from Chinese by the script
+  const nativeText = await readCornerText(image, 'auto').catch(() => '')
+  const lang = scriptLanguage(nativeText) ?? 'ja'
+  return identifyNonEnglish(text, nativeText, lang)
 }
 
-/** Japanese cards: set code + number is exact; the Japanese read confirms the name. */
-export async function identifyJapanese(latinText: string, jaText: string): Promise<Identification> {
-  const sets = await getSets('ja')
-  const mirrorCodes = await tcgplayerMirror.listSets('ja').then((l) => l.map((s) => s.ptcgoCode).filter((c): c is string => Boolean(c))).catch(() => [] as string[])
-  const ref = parseCardRef(latinText, [...sets.map((s) => s.id), ...mirrorCodes])
-  const jaName = (c: CatalogCard) => jaText.includes(c.name) || c.name.includes(readJaName(jaText) ?? '\u0000')
+/** Kept for callers and tests that know only about Japanese. */
+export const identifyJapanese = (latinText: string, jaText: string) => identifyNonEnglish(latinText, jaText, 'ja')
 
-  // 1. set code + number is exact (main catalog, then TCGplayer's recent sets)
-  let candidates = ref?.code ? await lookupRef(ref, 'ja') : []
-  if (candidates.length === 0 && ref?.total) candidates = await tcgplayerMirror.findByPrintedNumber(ref.number, ref.total, 'ja').catch(() => [])
+/**
+ * Japanese and Chinese cards: set code + number is exact; the native-script
+ * read confirms the name. The listings (TCGplayer) only help for Japanese.
+ */
+export async function identifyNonEnglish(latinText: string, nativeText: string, lang: 'ja' | 'zh-tw' | 'zh-cn'): Promise<Identification> {
+  const sets = await getSets(lang)
+  const mirrorCodes = lang === 'ja' ? await tcgplayerMirror.listSets('ja').then((l) => l.map((s) => s.ptcgoCode).filter((c): c is string => Boolean(c))).catch(() => [] as string[]) : []
+  const ref = parseCardRef(latinText, [...sets.map((s) => s.id), ...mirrorCodes])
+  const nativeName = (c: CatalogCard) => nativeText.includes(c.name) || c.name.includes(readNativeName(nativeText) ?? '\u0000')
+
+  // 1. set code + number is exact (main catalog, then TCGplayer's recent Japanese sets)
+  let candidates = ref?.code ? await lookupRef(ref, lang) : []
+  if (candidates.length === 0 && ref?.total && lang === 'ja') candidates = await tcgplayerMirror.findByPrintedNumber(ref.number, ref.total, 'ja').catch(() => [])
 
   // 2. Pokédex number → species → its cards, narrowed to the collector number.
   //    Works even when the set code was missed (the "151" set mark fools the reader)
   if (candidates.length === 0) {
     const dex = dexNumberIn(latinText)
-    const species = dex ? await japaneseSpeciesNameByDex(dex) : null
+    const species = dex ? await speciesNameByDexIn(dex, lang) : null
     if (species) {
-      const prints = await pricing.search({ name: species, lang: 'ja' })
+      const prints = await pricing.search({ name: species, lang })
       const byNumber = ref ? prints.filter((c) => c.number.toUpperCase() === ref.number.toUpperCase()) : []
       candidates = byNumber.length ? byNumber : prints.slice(0, 5)
     }
   }
 
-  // 3. the Japanese read alone: the card's name in kana/kanji
-  if (candidates.length === 0 && jaText) {
-    const name = readJaName(jaText)
-    if (name) candidates = (await pricing.search({ name, lang: 'ja' })).filter((c) => c.name.includes(name) || name.includes(c.name)).slice(0, 5)
+  // 3. the native read alone: the card's name in kana/kanji/hanzi
+  if (candidates.length === 0 && nativeText) {
+    const name = readNativeName(nativeText)
+    if (name) candidates = (await pricing.search({ name, lang })).filter((c) => c.name.includes(name) || name.includes(c.name)).slice(0, 5)
   }
 
-  // the Japanese read confirms which of several it is
-  if (candidates.length > 1 && jaText) {
-    const confirmed = candidates.filter(jaName)
+  // the native read confirms which of several it is
+  if (candidates.length > 1 && nativeText) {
+    const confirmed = candidates.filter(nativeName)
     if (confirmed.length) candidates = confirmed
   }
   // search results are brief; fetch the chosen card in full (prices, stats, picture, English name)
   if (candidates[0] && (Object.keys(candidates[0].prices).length === 0 || !candidates[0].images.large || !candidates[0].nameAlt)) {
-    const full = await pricing.getCard(candidates[0].id, 'ja').catch(() => null)
+    const full = await pricing.getCard(candidates[0].id, lang).catch(() => null)
     if (full) candidates[0] = full
   }
-  // no match (new set the catalog lacks?): still hand back the Japanese name
+  // no match (new set the catalog lacks?): still hand back the native name
   // so the card can be saved by name in one tap and matched later
-  const name = candidates[0]?.name ?? readJaName(jaText) ?? null
-  return { ref, name, text: jaText ? `${latinText}\n${jaText}` : latinText, candidates, language: 'ja' }
+  const name = candidates[0]?.name ?? readNativeName(nativeText) ?? null
+  return { ref, name, text: nativeText ? `${latinText}\n${nativeText}` : latinText, candidates, language: lang }
 }
 
-/** First run of kana/kanji of 2+ characters: on a Japanese read, that's the name. */
-function readJaName(jaText: string): string | null {
-  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー]{2,}/u.exec(jaText)?.[0] ?? null
+/** First run of kana/kanji/hanzi of 2+ characters: on a native read, that's the name. */
+function readNativeName(nativeText: string): string | null {
+  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー]{2,}/u.exec(nativeText)?.[0] ?? null
 }
 
 /** Everything after the read: pure text handling plus catalog lookups. */

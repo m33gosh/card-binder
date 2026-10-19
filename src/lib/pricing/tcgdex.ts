@@ -132,13 +132,13 @@ export const tcgdexSource: PricingSource = {
   async search({ name, number, page = 1, lang = 'en' }) {
     const q = name.trim()
     if (!q) return []
-    if (lang === 'ja') {
-      // the GraphQL endpoint is English-only; the REST search is fine for Japanese names
-      const list = (await rest<Array<{ id: string; localId: string; name: string; image?: string }>>(`/cards?name=${encodeURIComponent(q)}&pagination:itemsPerPage=60`, 'ja')) ?? []
-      const sets = await this.listSets('ja')
+    if (lang !== 'en') {
+      // the GraphQL endpoint is English-only; the REST search is fine for other languages
+      const list = (await rest<Array<{ id: string; localId: string; name: string; image?: string }>>(`/cards?name=${encodeURIComponent(q)}&pagination:itemsPerPage=60`, lang)) ?? []
+      const sets = await this.listSets(lang)
       const byId = new Map(sets.map((s) => [s.id.toLowerCase(), s]))
       const setOf = (id: string) => id.slice(0, Math.max(0, id.lastIndexOf('-')))
-      let cards = list.map((c) => briefToCatalogCard({ ...c, set: { id: setOf(c.id), name: byId.get(setOf(c.id).toLowerCase())?.name ?? setOf(c.id) } }, 'ja'))
+      let cards = list.map((c) => briefToCatalogCard({ ...c, set: { id: setOf(c.id), name: byId.get(setOf(c.id).toLowerCase())?.name ?? setOf(c.id) } }, lang))
       if (number?.trim()) {
         const n = number.trim().replace(/^0+(?=\d)/, '').toUpperCase()
         cards = cards.filter((c) => c.number.toUpperCase() === n)
@@ -168,24 +168,24 @@ export const tcgdexSource: PricingSource = {
   async getCard(id, lang = 'en') {
     const card = await rest<RestCard>(`/cards/${encodeURIComponent(id)}`, lang)
     if (!card) return null
-    const rate = lang === 'ja' ? await eurToUsdRate() : null
+    const rate = lang !== 'en' ? await eurToUsdRate() : null
     return toCatalogCard(card, lang, rate)
   },
 
   async listSets(lang = 'en') {
-    if (lang === 'ja') {
+    if (lang !== 'en') {
       // no release dates in the brief list, but it is in release order: use the position
-      setsMemo.ja ??= rest<Array<{ id: string; name: string; cardCount?: { official?: number; total?: number } }>>('/sets', 'ja').then((list) =>
+      setsMemo[lang] ??= rest<Array<{ id: string; name: string; cardCount?: { official?: number; total?: number } }>>('/sets', lang).then((list) =>
         (list ?? []).map((s, i) => ({
           id: s.id,
           name: s.name,
           releaseDate: String(i).padStart(5, '0'),
           printedTotal: s.cardCount?.official ?? s.cardCount?.total,
-          ptcgoCode: s.id, // Japanese cards print the set id itself, e.g. SV4a
+          ptcgoCode: s.id, // Japanese and Chinese cards print the set id itself, e.g. SV4a, SV5K
         })),
       )
-      setsMemo.ja.catch(() => delete setsMemo.ja)
-      return setsMemo.ja
+      setsMemo[lang]!.catch(() => delete setsMemo[lang])
+      return setsMemo[lang]!
     }
     if (!setsMemo.en) {
       setsMemo.en = graphql<{ sets: Array<{ id: string; name: string; releaseDate?: string; cardCount?: { official?: number }; serie?: { id: string } }> }>(
